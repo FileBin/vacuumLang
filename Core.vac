@@ -1,0 +1,16 @@
+import native void setlocale(int category,native_pointer byte locale);
+import native void printf(native_pointer byte fmt, native_va_args);
+
+namespace Core {
+    static class Console {
+    private:
+        Console() {
+            //6 means LC_ALL
+            setlocale(6, ".UTF-8".toANCII().beginRef.nativePointer);
+        }
+    public:
+        void write(String str) {
+            printf(str.toUTF8().beginRef.nativePointer);
+        }
+    }
+}

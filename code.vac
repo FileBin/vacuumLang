@@ -1,0 +1,7 @@
+import Core;
+
+entrypoint {
+    int i = 0;
+    i >> 5;
+    Console.write("Сус");
+}

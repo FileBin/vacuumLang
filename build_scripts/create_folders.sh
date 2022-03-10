@@ -1,0 +1,13 @@
+mkdir bin
+mkdir obj
+cd ./bin
+mkdir Linux
+cd ./Linux
+mkdir Debug
+mkdir Release
+cd ../../obj
+mkdir Linux
+cd ./Linux
+mkdir Debug
+mkdir Release
+cd ../..
