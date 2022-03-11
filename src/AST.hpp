@@ -2,6 +2,7 @@
 #include "stdafx.hpp"
 #include "ASTheader.h"
 #include "Operators.hpp"
+#include "Keyword.hpp"
 #include "Types.h"
 
 class Parser;
@@ -11,6 +12,7 @@ class Parser;
 //===----------------------------------------------------------------------===//
 
 namespace AST {
+    using ::Parser;
     interface IASTNode {
         virtual llvm::Value* GenCode() = 0;
     };
@@ -31,7 +33,7 @@ namespace AST {
     public:
         NumberExprAST(Parser *parser, String str) : ExprAST(parser), str(str)
         {
-            type = Type::Long;
+            type = Type::Num;
 
             if (str.find('e') || str.find('.'))
             {
@@ -43,14 +45,38 @@ namespace AST {
     };
 
     /// VariableExprAST - Expression class for referencing a variable, like "a".
-    class VariableExprAST : public ExprAST
-    {
-        String Name;
+    class VariableExpression : public ExprAST {
+        Type type;
+        String name;
 
     public:
-        VariableExprAST(Parser *parser, const String &Name) : ExprAST(parser), Name(Name) {}
+        VariableExpression(Parser *parser, String name, Type type) : ExprAST(parser), name(name), type(type) {}
 
         llvm::Value *GenCode() override;
+    };
+
+    class ClassExpression : public ExprAST {
+        String Name;
+        STD vector<Keyword> modifiers;
+        Type Parent;
+        
+        public:
+        ClassExpression(Parser* parser, String name, STD vector<Keyword> modifiers = {}, Type parent = Type::Object)
+        : ExprAST(parser), Name(name), modifiers(modifiers), Parent(parent) {}
+
+        llvm::Value* GenCode() override;
+    };
+
+    class InterfaceExpression : public ExprAST {
+        String Name;
+        STD vector<Keyword> modifiers;
+        Type Parent;
+        
+        public:
+        InterfaceExpression(Parser* parser, String name, STD vector<Keyword> modifiers = {}, Type parent = Type::Object)
+        : ExprAST(parser), Name(name), modifiers(modifiers), Parent(parent) {}
+
+        llvm::Value* GenCode() override;
     };
 
     /// BinaryExprAST - Expression class for a binary operator.
@@ -125,22 +151,22 @@ namespace AST {
         auto s = ToStdString(str);
         switch (type.GetEnum())
         {
-        case ::Type::Long:
+        case ::Type::Num:
             return ConstantInt::get(*parser->TheContext, APSInt(s));
         case ::Type::Dbl:
             return llvm::ConstantFP::get(*parser->TheContext, APFloat(APFloat::IEEEdouble(), s));
 
         default:
-            return ::LogErrorV("Unknown number type");
+            LogError("Unknown number type");
         }
     }
 
-    llvm::Value *VariableExprAST::GenCode()
+    llvm::Value *VariableExpression::GenCode()
     {
         // Look this variable up in the function.
-        llvm::Value *V = parser->NamedValues[Name];
+        llvm::Value *V = parser->NamedValues[name];
         if (!V)
-            return LogErrorV("Unknown variable name");
+            LogError("Unknown variable name");
         return V;
     }
 
@@ -164,7 +190,7 @@ namespace AST {
             // Convert bool 0/1 to double 0.0 or 1.0
             return parser->Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*parser->TheContext), "booltmp");
         default:
-            return LogErrorV("invalid binary operator");
+            LogError("invalid binary operator");
         }
     }
 
@@ -173,11 +199,11 @@ namespace AST {
         // Look up the name in the global module table.
         llvm::Function *CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
         if (!CalleeF)
-            return LogErrorV("Unknown function referenced");
+            LogError("Unknown function referenced");
 
         // If argument mismatch error.
         if (CalleeF->arg_size() != Args.size())
-            return LogErrorV("Incorrect # arguments passed");
+            LogError("Incorrect # arguments passed");
 
         std::vector<llvm::Value *> ArgsV;
         for (unsigned i = 0, e = Args.size(); i != e; ++i)

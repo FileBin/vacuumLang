@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.hpp"
+#include "Functions.hpp"
 #include "Lexer.hpp"
 #include "AST.hpp"
 
@@ -9,30 +10,41 @@
 class Parser
 {
 protected:
+
+#define LOG_IDENTIFIER_EXPECTED LogError("Identifier expected!")
+
+    typedef STD unique_ptr<AST::IASTNode> node_t;
+
     Token currentToken;
     std::stack<String> path;
+    STD vector<Keyword> modifiers;
+
+    enum class Context {
+        Class, Function, Global
+    } context;
 public:
     std::unique_ptr<llvm::LLVMContext> TheContext;
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
-    std::map<String, llvm::Value *> NamedValues;
+    std::map<String, llvm::Value*> NamedValues;
     std::unique_ptr<Lexer<>> lexer;
 
 public:
     Parser() {
         init();
     }
-    void ParseStream(std::istream &stream) {
-        lexer = STD make_unique<Lexer<>>(stream);
 
+    void ParseStream(std::istream& stream) {
+        lexer = STD make_unique<Lexer<>>(stream);
         while (true) {
+            GetNextToken();
             switch (currentToken.ty) {
                 break;
             case Token::Keyword:
-                HandleKeyword();
+                ParseKeyword();
                 break;
             default:
-                HandleTopLevelExpression();
+                LogError("Amogusus expected!\n");
                 break;
             }
         }
@@ -43,7 +55,7 @@ protected:
         using namespace llvm;
         // Open a new context and module.
         TheContext = std::make_unique<LLVMContext>();
-        TheModule = std::make_unique<Module>("my cool jit", *TheContext);
+        TheModule = std::make_unique<Module>("main", *TheContext);
 
         // Create a new builder for the module.
         Builder = std::make_unique<IRBuilder<>>(*TheContext);
@@ -53,187 +65,155 @@ protected:
         return currentToken = lexer->GetNextToken();
     }
 
-    std::unique_ptr<ExprAST> ParseExpression();
+    node_t ParseKeyword() {
+        if (currentToken.ty != Token::Keyword) LogError("Fuck you leatherman!");
+        auto& kw = *currentToken.GetData<Keyword>();
+        if (context == Context::Global) {
+            if (kw.isDefinition())
+                return ParseDefinitionKw(kw);
+        }
+    }
+
+#pragma region Keywords
+    node_t ParseDefinitionKw(Keyword kw) {
+        using namespace AST;
+        GetNextToken();
+        if (currentToken.ty != Token::Identifier) LOG_IDENTIFIER_EXPECTED;
+        String name = *currentToken.GetData<String>();
+        switch (kw.ty) {
+        case Keyword::Class: {
+            Type super_type = Type::Object;
+            ParseType4Class(super_type);
+            return node_t(new ClassExpression(this, name, modifiers, super_type));
+        }
+
+        case Keyword::Interface: {
+            Type super_type = Type::Object;
+            ParseType4Interface(super_type);
+            return node_t(new ClassExpression(this, name, modifiers, super_type));
+        }
+
+        case Keyword::Var: {
+            Type type;
+            ParseType4Var(type);
+            return node_t(new VariableExpression(this, name, type));
+        }
+
+        default:
+            LogError("Show me the boss of this gym!");
+            break;
+        }
+    }
+
+    void ParseType4Class(Type& superType) {
+        superType = Type::Object;
+        if (GetNextToken().ty == Token::Colon) {
+            if (GetNextToken().ty != Token::Identifier || currentToken.ty != Token::Type) LOG_IDENTIFIER_EXPECTED;
+            if (currentToken.ty == Token::Type) {
+                superType = *currentToken.GetData<Type>();
+            } else {
+                //TODO: insert metadata lookup for type check
+            }
+        }
+    }
+
+    void ParseType4Interface(Type& superType) {
+        superType = Type::Object;
+        if (GetNextToken().ty == Token::Colon) {
+            if (GetNextToken().ty != Token::Identifier) LOG_IDENTIFIER_EXPECTED;
+            //TODO: insert metadata lookup for type check
+        }
+    }
+
+
+    void ParseType4Var(Type& superType) {
+        superType = Type::Object;
+        if (GetNextToken().ty == Token::Operator && currentToken.GetData<Operator>()->type == Operator::Assign) {
+            //TODO: insert type check
+        } else LogError("= expected!");
+    }
+#pragma endregion
 
     /// numberexpr ::= number
-    std::unique_ptr<ExprAST> ParseNumberExpr() {
-        auto Result = std::make_unique<NumberExprAST>(currentToken.str);
+    node_t ParseNumberExpr() {
+        auto Result = std::make_unique<AST::NumberExprAST>(currentToken.GetData<String>());
         GetNextToken(); // consume the number
         return std::move(Result);
     }
 
     /// parenexpr ::= '(' expression ')'
-    std::unique_ptr<ExprAST> ParseParenExpr() {
-        GetNextToken(); // eat (.
+    node_t ParseParenExpr() {
+        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->type != Operator::BracketOpen)
+            LogError("'(' expected!");
+        GetNextToken();
         auto V = ParseExpression();
         if (!V)
             return nullptr;
 
-        if (currentToken.val != ')')
-            return LogError("expected ')'");
+        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->type != Operator::BracketClose)
+            LogError("')' expected!");
         GetNextToken(); // eat ).
         return V;
     }
 
-    /// identifierexpr
-    ///   ::= identifier
-    ///   ::= identifier '(' expression* ')'
-    std::unique_ptr<ExprAST> ParseIdentifierExpr() {
-        std::wstring IdName = IdentifierStr;
-
-        getNextToken(); // eat identifier.
-
-        if (CurTok.val != '(') // Simple variable ref.
-            return std::make_unique<VariableExprAST>(IdName);
-
-        // Call.
-        getNextToken(); // eat (
-        std::vector<std::unique_ptr<ExprAST>> Args;
-        if (CurTok.val != ')') {
-            while (true) {
-                if (auto Arg = ParseExpression())
-                    Args.push_back(std::move(Arg));
-                else
-                    return nullptr;
-
-                if (CurTok.val == ')')
-                    break;
-
-                if (CurTok.val != ',')
-                    return LogError("Expected ')' or ',' in argument list");
-                getNextToken();
-            }
-        }
-
-        // Eat the ')'.
-        getNextToken();
-
-        return std::make_unique<CallExprAST>(IdName, std::move(Args));
-    }
-
-    /// primary
-    ///   ::= identifierexpr
-    ///   ::= numberexpr
-    ///   ::= parenexpr
-    std::unique_ptr<ExprAST> ParsePrimary() {
-        switch (CurTok.tok)
-        {
-        default:
-            return LogError("unknown token when expecting an expression");
-        case Token::Identifier:
-            return ParseIdentifierExpr();
-        case Token::Number:
-            return ParseNumberExpr();
-        case (Token::Operator):
-            return ParseParenExpr();
-        }
-    }
-
     /// binoprhs
     ///   ::= ('+' primary)*
-    std::unique_ptr<ExprAST> ParseBinOpRHS(int ExprPrec, std::unique_ptr<ExprAST> LHS)
-    {
+    node_t ParseBinOpRHS(int priority, node_t LHS) {
+        if (currentToken.ty != Token::Operator) LogError("Operator expected!");
+        Operator& op = *currentToken.GetData<Operator>();
+        if (!Operator::hasBinaryForm(op.type)) LogError("Binary operator expected!");
         // If this is a binop, find its precedence.
-        while (true)
-        {
-            int TokPrec = GetTokPrecedence();
+        while (true) {
+            int op_priority = Operator::GetPriority(op.type);
 
             // If this is a binop that binds at least as tightly as the current binop,
             // consume it, otherwise we are done.
-            if (TokPrec < ExprPrec)
+            if (op_priority < priority)
                 return LHS;
 
             // Okay, we know this is a binop.
-            int BinOp = CurTok.val;
-            getNextToken(); // eat binop
+            auto BinOp = op.type;
+            GetNextToken(); // eat binop
 
             // Parse the primary expression after the binary operator.
             auto RHS = ParsePrimary();
-            if (!RHS)
-                return nullptr;
+
 
             // If BinOp binds less tightly with RHS than the operator after RHS, let
             // the pending operator take RHS as its LHS.
-            int NextPrec = GetTokPrecedence();
-            if (TokPrec < NextPrec)
-            {
-                RHS = ParseBinOpRHS(TokPrec + 1, std::move(RHS));
-                if (!RHS)
-                    return nullptr;
+
+            int next_priority = 0;
+
+            if (currentToken.ty == Token::Operator)
+                next_priority = Operator::GetPriority(currentToken.GetData<Operator>()->type);
+
+            if (op_priority < next_priority) {
+                RHS = ParseBinOpRHS(priority + 1, std::move(RHS));
             }
 
             // Merge LHS/RHS.
-            LHS =
-                std::make_unique<BinaryExprAST>(BinOp, std::move(LHS), std::move(RHS));
+            LHS = std::make_unique<AST::BinaryExprAST>(BinOp, STD move(LHS), STD move(RHS));
+        }
+    }
+
+    node_t ParseReadVariableExpr() {
+        //TODO: insert check code for variable, property, function
+    }
+
+    node_t ParsePrimary() {
+        switch (currentToken.ty) {
+        default: LogError("Unknown token when expecting an expression");
+        case Token::Identifier: return ParseReadVariableExpr();
+        case Token::Number: return ParseNumberExpr();
+        case Token::Operator: return ParseParenExpr();
         }
     }
 
     /// expression
     ///   ::= primary binoprhs
     ///
-    std::unique_ptr<ExprAST> ParseExpression()
-    {
+    node_t ParseExpression() {
         auto LHS = ParsePrimary();
-        if (!LHS)
-            return nullptr;
-
         return ParseBinOpRHS(0, std::move(LHS));
-    }
-
-    /// prototype
-    ///   ::= id '(' id* ')'
-    std::unique_ptr<PrototypeAST> ParsePrototype()
-    {
-        if (CurTok.tok != Token::Identifier)
-            return LogErrorP("Expected function name in prototype");
-
-        std::wstring FnName = IdentifierStr;
-        getNextToken();
-
-        if (CurTok.val != '(')
-            return LogErrorP("Expected '(' in prototype");
-
-        std::vector<std::wstring> ArgNames;
-        while (getNextToken() == Token::Identifier)
-            ArgNames.push_back(IdentifierStr);
-        if (CurTok.val != ')')
-            return LogErrorP("Expected ')' in prototype");
-
-        // success.
-        getNextToken(); // eat ')'.
-
-        return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
-    }
-
-    /// definition ::= 'def' prototype expression
-    std::unique_ptr<FunctionAST> ParseDefinition()
-    {
-        getNextToken(); // eat def.
-        auto Proto = ParsePrototype();
-        if (!Proto)
-            return nullptr;
-
-        if (auto E = ParseExpression())
-            return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
-        return nullptr;
-    }
-
-    /// toplevelexpr ::= expression
-    std::unique_ptr<FunctionAST> ParseTopLevelExpr()
-    {
-        if (auto E = ParseExpression())
-        {
-            // Make an anonymous proto.
-            auto Proto = std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::string>());
-            return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
-        }
-        return nullptr;
-    }
-
-    /// external ::= 'extern' prototype
-    static std::unique_ptr<PrototypeAST> ParseExtern()
-    {
-        getNextToken(); // eat extern.
-        return ParsePrototype();
     }
 };

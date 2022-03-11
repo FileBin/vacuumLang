@@ -3,67 +3,62 @@
 namespace Constant {
     CEXPRSTR operators[] = {
         
-        STR(+), //Add
-        STR(-),    //Sub,
-        STR(*),    //Mul,
-        STR(/),    //Div,
-        STR(%),    //Mod,
+        L"+", //Add
+        L"-",    //Sub,
+        L"*",    //Mul,
+        L"/",    //Div,
+        L"%",    //Mod,
 
-        STR(++),    //Incr,
-        STR(--),    //Decr,
+        L"++",    //Incr,
+        L"--",    //Decr,
 
         //bit
-        STR(<<),    //BitMoveL,
-        STR(>>),    //BitMoveR,
-        STR(&),    //BitAnd,
-        STR(|),    //BitOr,
-        STR(~),    //BitNot,
-        STR(^),    //BitXor,
+        L"<<",    //BitMoveL,
+        L">>",    //BitMoveR,
+        L"&",    //BitAnd,
+        L"|",    //BitOr,
+        L"~",    //BitNot,
+        L"^",    //BitXor,
 
         //boolean
-        STR(&&),    //And,
-        STR(||),    //Or,
-        STR(!),    //Not,
+        L"&&",    //And,
+        L"||",    //Or,
+        L"!",    //Not,
 
         //compare
-        STR(>),    //Greater,
-        STR(<),    //Less,
-        STR(==),    //Equal,
-        STR(>=),    //GreaterEqual,
-        STR(<=),    //LessEqual,
-        STR(!=),    //NotEqual,
+        L">",    //Greater,
+        L"<",    //Less,
+        L"==",    //Equal,
+        L">=",    //GreaterEqual,
+        L"<=",    //LessEqual,
+        L"!=",    //NotEqual,
 
         //assign
-        STR(=),    //Assign,
-        STR(+=),    //AssignAdd,
-        STR(-=),    //AssignSub,
-        STR(*=),    //AssignMul,
-        STR(/=),    //AssignDiv,
-        STR(%=),    //AssignMod,
+        L"=",    //Assign,
+        L"+=",    //AssignAdd,
+        L"-=",    //AssignSub,
+        L"*=",    //AssignMul,
+        L"/=",    //AssignDiv,
+        L"%=",    //AssignMod,
 
-        STR(<<=),    //AssignBitMoveL,
-        STR(>>=),    //AssignBitMoveR,
-        STR(&=),    //AssignBitAnd,
-        STR(|=),    //AssignBitOr,
-        STR(~=),    //AssignBitNot,
-        STR(^=),    //AssignBitXor,
+        L"<<=",    //AssignBitMoveL,
+        L">>=",    //AssignBitMoveR,
+        L"&=",    //AssignBitAnd,
+        L"|=",    //AssignBitOr,
+        L"~=",    //AssignBitNot,
+        L"^=",    //AssignBitXor,
 
         //Brackets
-    #ifdef USE_WSTR
         L"(",    //BracketOpen,
         L")",    //BracketClose,
-    #else
-        "(",    //BracketOpen,
-        ")",    //BracketClose,
-    #endif
-        STR([),    //SqBracketOpen,  //[
-        STR(]),    //SqBracketClose, //]
-        STR({),    //BraceOpen,      //{
-        STR(}),    //BraceClose,     //}
+        L"[",    //SqBracketOpen,  //[
+        L"]",    //SqBracketClose, //]
+        L"{",    //BraceOpen,      //{
+        L"}",    //BraceClose,     //}
 
         //Other
-        STR(.),    //Dot,
-        STR(?),    //Ternar,
+        L".",    //Dot,
+        L"?",    //Ternar,
     };
 }
 
@@ -136,6 +131,45 @@ class Operator : public IPrintable {
     Operator(Enum e = Unknown){
         type = e;
         priority = GetPriority(e);
+    }
+
+    static bool hasBinaryForm(Enum op) {
+        switch (op) {
+        case Add:
+        case Sub:
+        case Mul:
+        case Div:
+        case Mod:
+
+        case BitMoveL:
+        case BitMoveR:
+        case BitAnd:
+        case BitOr:
+        case BitXor:
+
+        case And:
+        case Or:
+
+        case Assign:
+        case AssignAdd:
+        case AssignSub:
+        case AssignMul:
+        case AssignDiv:
+        case AssignMod:
+
+        case AssignBitMoveL:
+        case AssignBitMoveR:
+        case AssignBitAnd:
+        case AssignBitOr:
+        case AssignBitNot:
+        case AssignBitXor:
+
+        case Dot:
+            return true;
+        
+        default:
+            return false;
+        }
     }
 
     static int GetPriority(Enum op) {

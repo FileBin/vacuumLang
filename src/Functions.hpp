@@ -1,8 +1,8 @@
 #pragma once
 #include "stdafx.hpp"
-#include "AST.hpp"
+#include <stdexcept>
 
 /// LogError* - These are little helper functions for error handling.
 void LogError(const char *Str) {
-    throw Str;
+    throw STD exception(Str);
 }

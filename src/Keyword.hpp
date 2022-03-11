@@ -17,6 +17,7 @@ namespace Constant {
         STR(protected),
         STR(friend),
         STR(interface),
+        STR(var),
 
         STR(as),
         STR(is),
@@ -33,6 +34,8 @@ namespace Constant {
         STR(addrof),
 
         STR(unroll),
+
+        STR(native_pointer),
     };
 }
 
@@ -43,6 +46,7 @@ public:
         Native = 0,
         Import,
         Entrypoint,
+
         Namespace,
         Class,
         Self,
@@ -52,6 +56,7 @@ public:
         Protected,
         Friend,
         Interface,
+        Var,
 
         As,
         Is,
@@ -66,7 +71,49 @@ public:
         Sizeof,
         Addrof,
         Unroll,
+
+        NativePointer,
     } ty;
+
+    bool isModifier(){
+        switch(ty) {
+            case Static:
+            case Const:
+            case Ref:
+            case Public:
+            case Private:
+            case Protected:
+            case Native:
+            return true;
+
+            default:
+            return false;
+        }
+    }
+
+    bool isDefinition() {
+        switch (ty) {
+            case Class:
+            case Interface:
+            case Var:
+            return true;
+            
+            default:
+            return false;
+        }
+    }
+
+    bool isVisiblityModifier(){
+        switch(ty) {
+            case Public:
+            case Private:
+            case Protected:
+            return true;
+
+            default:
+            return false;
+        }
+    }
 
     Keyword(Enum en = Unknown) {
         ty = en;
@@ -76,13 +123,15 @@ public:
         return Constant::keywords[(size_t)ty];
     }
 
-    static bool TryParse(String str, Keyword* &kw) {
+    static bool TryParse(String str, Keyword* &kw, bool strict = false) {
         using namespace Constant;
         Enum ty = Unknown;
         size_t len = 0;
-        for(size_t i=0; i<ARRSIZE(keywords); i++){
-            if(len < LEN(keywords[i]) && str.substr(0, LEN(keywords[i])) == keywords[i]){
-                len = LEN(keywords[i]);
+        for(size_t i=0; i<ARRSIZE(keywords); i++) {
+            size_t klen = LEN(keywords[i]);
+            if(strict && str.length() != klen) continue;
+            if(len < klen && str.substr(0, klen) == keywords[i]){
+                len = klen;
                 ty = (Enum)i;
             }
         }
