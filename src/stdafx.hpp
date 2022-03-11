@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <string>
 #include <map>
+#include <stack>
 
 #define USE_WSTR
 
@@ -28,12 +29,6 @@
 #define TSTR char_t*
 #define CTSTR const TSTR
 #define CEXPRSTR constexpr char_t const*
-
-#ifdef WIN32
-    #define ln '\r'
-#else
-    #define ln '\n'
-#endif
 
 
 #define interface struct

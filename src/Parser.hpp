@@ -10,30 +10,26 @@ class Parser
 {
 protected:
     Token currentToken;
-
+    std::stack<String> path;
 public:
     std::unique_ptr<llvm::LLVMContext> TheContext;
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
     std::map<String, llvm::Value *> NamedValues;
-    std::unique_ptr<Lexer> lexer;
+    std::unique_ptr<Lexer<>> lexer;
 
 public:
-    Parser()
-    {
+    Parser() {
         init();
     }
-    void ParseStream(std::istream &stream)
-    {
-        lexer = std::make_unique<Lexer>(stream);
+    void ParseStream(std::istream &stream) {
+        lexer = STD make_unique<Lexer<>>(stream);
 
         while (true) {
-            switch (currentToken.token) {
-            case Token::CmdEnd: // ignore top-level semicolons.
-                GetNextToken();
+            switch (currentToken.ty) {
                 break;
-            case Token::Extern:
-                HandleExtern();
+            case Token::Keyword:
+                HandleKeyword();
                 break;
             default:
                 HandleTopLevelExpression();
@@ -43,8 +39,7 @@ public:
     }
 
 protected:
-    void init()
-    {
+    void init() {
         using namespace llvm;
         // Open a new context and module.
         TheContext = std::make_unique<LLVMContext>();
@@ -54,24 +49,21 @@ protected:
         Builder = std::make_unique<IRBuilder<>>(*TheContext);
     }
 
-    Token GetNextToken()
-    {
+    Token GetNextToken() {
         return currentToken = lexer->GetNextToken();
     }
 
     std::unique_ptr<ExprAST> ParseExpression();
 
     /// numberexpr ::= number
-    std::unique_ptr<ExprAST> ParseNumberExpr()
-    {
+    std::unique_ptr<ExprAST> ParseNumberExpr() {
         auto Result = std::make_unique<NumberExprAST>(currentToken.str);
         GetNextToken(); // consume the number
         return std::move(Result);
     }
 
     /// parenexpr ::= '(' expression ')'
-    std::unique_ptr<ExprAST> ParseParenExpr()
-    {
+    std::unique_ptr<ExprAST> ParseParenExpr() {
         GetNextToken(); // eat (.
         auto V = ParseExpression();
         if (!V)
@@ -86,8 +78,7 @@ protected:
     /// identifierexpr
     ///   ::= identifier
     ///   ::= identifier '(' expression* ')'
-    std::unique_ptr<ExprAST> ParseIdentifierExpr()
-    {
+    std::unique_ptr<ExprAST> ParseIdentifierExpr() {
         std::wstring IdName = IdentifierStr;
 
         getNextToken(); // eat identifier.
@@ -98,10 +89,8 @@ protected:
         // Call.
         getNextToken(); // eat (
         std::vector<std::unique_ptr<ExprAST>> Args;
-        if (CurTok.val != ')')
-        {
-            while (true)
-            {
+        if (CurTok.val != ')') {
+            while (true) {
                 if (auto Arg = ParseExpression())
                     Args.push_back(std::move(Arg));
                 else
@@ -126,8 +115,7 @@ protected:
     ///   ::= identifierexpr
     ///   ::= numberexpr
     ///   ::= parenexpr
-    static std::unique_ptr<ExprAST> ParsePrimary()
-    {
+    std::unique_ptr<ExprAST> ParsePrimary() {
         switch (CurTok.tok)
         {
         default:
@@ -136,7 +124,7 @@ protected:
             return ParseIdentifierExpr();
         case Token::Number:
             return ParseNumberExpr();
-        case (Token)'(':
+        case (Token::Operator):
             return ParseParenExpr();
         }
     }
@@ -236,8 +224,7 @@ protected:
         if (auto E = ParseExpression())
         {
             // Make an anonymous proto.
-            auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
-                                                        std::vector<std::string>());
+            auto Proto = std::make_unique<PrototypeAST>("__anon_expr", std::vector<std::string>());
             return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
         }
         return nullptr;

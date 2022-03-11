@@ -1,0 +1,45 @@
+{
+    "name": "vacuumlang",
+    "displayName": "VacuumLang",
+    "description": "new language support for vs code",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.65.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "snippets": [
+            {
+                "language": "vacuum",
+                "path": "./snippets/vacuum.tmSnippet.json"
+            }
+        ],
+        "languages": [{
+            "id": "vacuum",
+            "aliases": ["Vacuum", "vacuum"],
+            "extensions": [".vac"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "vacuum",
+            "scopeName": "source.vacuum",
+            "path": "./syntaxes/vacuum.tmLanguage.json"
+        }],
+        "semanticTokenTypes": [
+            { "id": "variable", "description": "variable" },
+            { "id": "function", "description": "func" }
+        ],
+        "semanticTokenModifiers": [
+            { "id": "field", "description": "field" },
+            { "id": "parameter", "description": "parameter"},
+            { "id": "local", "description": "local Variable"}
+        ],
+        "configurationDefaults": {
+            "[vacuum]" : {
+                "editor.semanticHighlighting.enabled": "configuredByTheme"
+            }
+        }
+    }
+}

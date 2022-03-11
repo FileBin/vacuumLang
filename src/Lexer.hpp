@@ -26,16 +26,16 @@ private:
     Token token;
 public:
     Lexer(StreamType& stream) : stream(stream) {}
-    /// gettok - Return the next token from stream.
+    // GetNextToken - Return the next token from stream.
     Token GetNextToken() {
         using namespace std;
 
-        //Init
+        // Init
         if(current == 0) moveNext();
 
         skipSpaces();
 
-        // if all tokens read
+        // If all tokens read
         if(!isop(last())) { 
 
             // Identifier
@@ -158,7 +158,7 @@ private:
         for(size_t i=BUFFER_SIZE-2;i>0;i--) //shift buffer
             buffer[i] = buffer[i-1];
         
-        return buffer[0] = (wchar_t)current; //set first element
+        return buffer[0] = (char_t)current; //set first element
     }
 
     String reversedBuffer(){
