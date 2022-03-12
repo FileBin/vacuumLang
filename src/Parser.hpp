@@ -196,14 +196,14 @@ protected:
         }
     }
 
-    node_t ParseReadVariableExpr() {
+    node_t ParseReadExpr() {
         //TODO: insert check code for variable, property, function
     }
 
     node_t ParsePrimary() {
         switch (currentToken.ty) {
         default: LogError("Unknown token when expecting an expression");
-        case Token::Identifier: return ParseReadVariableExpr();
+        case Token::Identifier: return ParseReadExpr();
         case Token::Number: return ParseNumberExpr();
         case Token::Operator: return ParseParenExpr();
         }

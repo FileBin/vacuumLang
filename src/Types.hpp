@@ -100,14 +100,16 @@ public:
         return buf;
     }
 
-    static bool TryParse(String str, Type* &t) {
+    static bool TryParse(String str, Type* &t, bool strict = false) {
         using namespace Constant;
         if(!t) return false;
         Enum ty = Unknown;
         size_t len = 0;
         for(size_t i=0; i<ARRSIZE(types); i++){
-            if(len < LEN(types[i]) && str.substr(0, LEN(types[i])) == types[i]){
-                len = LEN(types[i]);
+            size_t _len = LEN(types[i]);
+            if(strict && _len != str.length()) continue;
+            if(len < _len && str.substr(0, _len) == types[i]) {
+                len = _len;
                 ty = (Enum)i;
             }
         }

@@ -49,7 +49,7 @@ public:
 
                 Keyword* kw;
                 ::Type* ty;
-                if (Keyword::TryParse(str, kw)) {
+                if (Keyword::TryParse(str, kw, true)) {
                     token.ty = Token::Keyword;
                     token.SetData<Keyword>(kw);
                 } else if (::Type::TryParse(str, ty)) {
