@@ -1,6 +1,4 @@
 #pragma once
-// The lexer returns tokens [0-255] if it is an unknown character, otherwise one
-// of these for known things.
 #include "stdafx.hpp"
 
 struct Token
@@ -8,14 +6,13 @@ struct Token
     enum Enum
     {
         Unknown = 0x7fffffff,
-        End = -1,
-        CmdEnd = -2,
-        Comma = -3,
-        Colon = -4,
+        
+        End = -1, // EOF
+        CmdEnd = -2, // ';'
+        Comma = -3, // ','
+        Colon = -4, //':'
 
-        // primary
         Keyword = -0xff,
-        Type,
         Identifier,
         Number,
         String,
@@ -92,8 +89,6 @@ private:
         case String:
             return L"{ String, value: \"%ls\" }";
         // primary
-        case Type:
-            return L"{ Type, type: %ls }";
         case Identifier:
             return L"{ Identifier, string: \"%ls\" }";
         case Number:

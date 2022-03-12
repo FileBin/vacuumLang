@@ -228,7 +228,8 @@ public:
     }
 };
 
-::Type::PMember ::Type::GetMember(String str) {
+typedef ::Type ty;
+ty::PMember ty::GetMember(String str) {
     for (::Type::PMember& mem : members) {
         if(mem->GetName() == str) {
             return mem;

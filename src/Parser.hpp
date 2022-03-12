@@ -108,12 +108,8 @@ protected:
     void ParseType4Class(Type& superType) {
         superType = Type::Object;
         if (GetNextToken().ty == Token::Colon) {
-            if (GetNextToken().ty != Token::Identifier || currentToken.ty != Token::Type) LOG_IDENTIFIER_EXPECTED;
-            if (currentToken.ty == Token::Type) {
-                superType = *currentToken.GetData<Type>();
-            } else {
-                //TODO: insert metadata lookup for type check
-            }
+            if (GetNextToken().ty != Token::Identifier) LOG_IDENTIFIER_EXPECTED;
+            //TODO: insert metadata lookup for type check
         }
     }
 

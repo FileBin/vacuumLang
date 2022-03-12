@@ -35,7 +35,6 @@ public:
 
         skipSpaces();
 
-        // If all tokens read
         if (!isop(last())) {
 
             // Identifier
@@ -52,9 +51,6 @@ public:
                 if (Keyword::TryParse(str, kw, true)) {
                     token.ty = Token::Keyword;
                     token.SetData<Keyword>(kw);
-                } else if (::Type::TryParse(str, ty)) {
-                    token.ty = Token::Type;
-                    token.SetData<::Type>(ty);
                 } else token.SetData<String>(new String(str));
                 clearBuffer();
                 return token;
@@ -129,6 +125,7 @@ public:
         if (current == _EOF)
             return token = Token::End;
 
+        token = Token::Unknown;
         token.SetData<String>(new String(reversedBuffer()));
         clearBuffer();
         moveNext();
@@ -141,12 +138,6 @@ private:
     }
     void skipUntil(IntType ch) {
         while (stream.get() != ch);
-    }
-
-    IntType move() {
-        IntType t;
-        while (iswspace(t = moveNext()));
-        return t;
     }
 
     void skipSpaces() {
