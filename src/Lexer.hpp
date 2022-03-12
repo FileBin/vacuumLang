@@ -47,7 +47,6 @@ public:
                 } while (iswalnum(current) || current == '_'); //read token
 
                 Keyword* kw;
-                ::Type* ty;
                 if (Keyword::TryParse(str, kw, true)) {
                     token.ty = Token::Keyword;
                     token.SetData<Keyword>(kw);

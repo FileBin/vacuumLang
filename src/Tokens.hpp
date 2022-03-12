@@ -68,7 +68,7 @@ struct Token
         data = d;
         return true;
     }
-
+    
     Token operator=(const Token &other) {
         copy(other);
         return *this;
