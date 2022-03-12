@@ -2,7 +2,6 @@
 
 #include "Tokens.hpp"
 #include "Keyword.hpp"
-#include "Types.hpp"
 #include "Operators.hpp"
 
 template<typename _CharT = char_t, int _EOF = -1>

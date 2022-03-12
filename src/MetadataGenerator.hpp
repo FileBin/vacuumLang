@@ -1,25 +1,27 @@
 #pragma once
 #include "stdafx.hpp"
 #include "Types.hpp"
+#include "Functions.hpp"
 
 struct Metadata {
     Tree<Type> ClassTree, InterfaceTree;
 
     Metadata() : ClassTree(Type::Object) {
-        ClassTree.root->AddChild(Type::SByte);
-        ClassTree.root->AddChild(Type::Byte);
-        ClassTree.root->AddChild(Type::Short);
-        ClassTree.root->AddChild(Type::UShort);
-        ClassTree.root->AddChild(Type::Int);
-        ClassTree.root->AddChild(Type::UInt);
-        ClassTree.root->AddChild(Type::Num);
-        ClassTree.root->AddChild(Type::UNum);
+        auto val_ty = ClassTree.root->AddChild(Objects::ValueType());
+        val_ty->AddChild(Type::SByte);
+        val_ty->AddChild(Type::Byte);
+        val_ty->AddChild(Type::Short);
+        val_ty->AddChild(Type::UShort);
+        val_ty->AddChild(Type::Int);
+        val_ty->AddChild(Type::UInt);
+        val_ty->AddChild(Type::Num);
+        val_ty->AddChild(Type::UNum);
 
-        ClassTree.root->AddChild(Type::Flt);
-        ClassTree.root->AddChild(Type::Dbl);
-        ClassTree.root->AddChild(Type::BigDbl);
+        val_ty->AddChild(Type::Flt);
+        val_ty->AddChild(Type::Dbl);
+        val_ty->AddChild(Type::BigDbl);
 
-        ClassTree.root->AddChild(Type::Char);
+        val_ty->AddChild(Type::Char);
     }
 };
 

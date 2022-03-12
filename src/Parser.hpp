@@ -3,6 +3,7 @@
 #include "Functions.hpp"
 #include "Lexer.hpp"
 #include "AST.hpp"
+#include "MetadataGenerator.hpp"
 
 //===----------------------------------------------------------------------===//
 // Parser

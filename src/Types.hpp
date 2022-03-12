@@ -60,45 +60,44 @@ public:
 protected:
 
     Enum type = Unknown;
-    int byteWidth;
 
     STD vector<String> location;
     STD vector<PMember> members;
+
+    virtual int getClassSize() { return 0; }
 public:
     Type(Enum type_enum = Unknown) {
         type = type_enum;
-        switch (type_enum)
-        {
+    }
+
+    int getByteSize() {
+        switch (type) {
+        case Object:
         case Void:
-            byteWidth = 0;
-            break;
+            return 0; //abstract objects
+
         case Byte:
         case SByte:
-            byteWidth = 1; //8bit
-            break;
+            return 1; //8bit
+
         case Short:
         case UShort:
-            byteWidth = 2; //16bit
-            break;
+            return 2; //16bit
 
         case Int:
         case UInt:
         case Flt:
         case Char:
-            byteWidth = 4; //32bit
-            break;
+            return 4; //32bit
 
         case Num:
         case UNum:
         case Dbl:
-            byteWidth = 8; //64bit
-            break;
+            return 8; //64bit
         case Class:
-            byteWidth = calculateClassSize();
-            break;
+            return getClassSize();
         default:
-            byteWidth = -1; //Unknown
-            break;
+            return -1;
         }
     }
 
@@ -107,12 +106,12 @@ public:
     String ToString() override {
         char_t buf[0x400];
 
-        SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteWidth: %d })", getFullName().c_str(), byteWidth);
+        SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteSize: %d })", getFullName().c_str(), getByteSize());
 
         return buf;
     }
 
-    String getName() {
+    virtual String getName() {
         return Constant::types[(size_t)type];
     }
 
@@ -157,8 +156,6 @@ public:
     static Type createType(String name, STD vector<Member> members = {});
     static Type createPrototype(String name);
 
-    int calculateClassSize();
-
     PMember getMember(String str);
 };
 
@@ -170,6 +167,7 @@ public:
         Property,
         Function,
     };
+    bool isStatic, isRef, isVirtual, isAbstract;
 protected:
     Enum mem_ty;
     Type ty, class_ty;
@@ -177,23 +175,23 @@ protected:
 public:
     Member(String name, Type ty, Type class_ty, Enum mem_ty) : name(name), ty(ty), class_ty(class_ty), mem_ty(mem_ty) {}
 
-    Type GetType() {
+    Type getType() {
         return ty;
     }
 
-    Enum GetMemberType() {
+    Enum getMemberType() {
         return mem_ty;
     }
 
-    String GetName() {
+    String getName() {
         return name;
     }
 
-    String GetFullName() {
+    String getFullName() {
         return class_ty.getFullName() + L"." + name;
     }
 
-    virtual String GetLlvmName() { return L""; };
+    virtual String getLlvmName() = 0;
 };
 
 struct Field : public Member {
@@ -201,7 +199,7 @@ public:
     Field(String name, Type class_type, Type type)
         : Member(name, type, class_type, Member::Field) {}
 
-    String GetLlvmName() override {
+    String getLlvmName() override {
         return class_ty.getLlvmName() + L"_fld_" + name;
     }
 };
@@ -217,7 +215,7 @@ public:
         parameters = args;
     }
 
-    String GetLlvmName() override {
+    String getLlvmName() override {
         return class_ty.getLlvmName() + L"_fnc_" + name;
     }
 };
@@ -232,7 +230,7 @@ public:
         mem_ty = Member::Property;
     }
 
-    String GetLlvmName() override {
+    String getLlvmName() override {
         return class_ty.getLlvmName() + L"_prp_" + name;
     }
 };
@@ -240,11 +238,15 @@ public:
 typedef ::Type ty;
 ty::PMember ty::getMember(String str) {
     for (::Type::PMember& mem : members) {
-        if(mem->GetName() == str) {
+        if (mem->getName() == str) {
             return mem;
         }
     }
     return nullptr;
+}
+
+bool operator==(::Type a, ::Type b) {
+    return a.getFullName() == b.getFullName();
 }
 
 #include "Objects.hpp"

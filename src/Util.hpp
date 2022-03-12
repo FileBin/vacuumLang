@@ -43,8 +43,10 @@ public:
     public:
 
         T data;
-        void AddChild(T d) {
-            children.push_back(STD make_shared<Node>({ this, {}, d }));
+        PNode AddChild(T d) {
+            auto ptr = STD make_shared<Node>({ this, {}, d });
+            children.push_back(ptr);
+            return ptr;
         }
 
         bool RemoveChild(T d) {
