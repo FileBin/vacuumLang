@@ -15,7 +15,6 @@ struct Token
 
         // primary
         Keyword = -0xff,
-        Type,
         Identifier,
         Number,
         String,
@@ -71,7 +70,7 @@ struct Token
         data = d;
         return true;
     }
-
+    
     Token operator=(const Token &other) {
         copy(other);
         return *this;
@@ -92,8 +91,6 @@ private:
         case String:
             return L"{ String, value: \"%ls\" }";
         // primary
-        case Type:
-            return L"{ Type, type: %ls }";
         case Identifier:
             return L"{ Identifier, string: \"%ls\" }";
         case Number:
