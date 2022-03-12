@@ -8,6 +8,7 @@
 #include <string>
 #include <map>
 #include <stack>
+#include <vector>
 
 #define USE_WSTR
 
