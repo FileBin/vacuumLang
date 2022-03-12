@@ -17,7 +17,14 @@ interface IPrintable {
 
 struct String : public std_string, public IPrintable {
     String() : std_string() {};
+#ifdef USE_WSTR
     String(const wchar_t* wstr) : std_string(wstr) {}
+#else
+    String(const wchar_t* wstr);
+#endif
+
+    String(const char* cstr);
+
     String(const std_string& wstr) : std_string(wstr) {}
     String ToString() override {
         return *this;
@@ -90,4 +97,12 @@ String Utf8ToWstring(const std::string& str) {
 std::string ToStdString(const String& str) {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> utf8_conv;
     return utf8_conv.to_bytes(str);
+}
+
+::String::String(const char* cstr) {
+    size_t size = strlen(cstr);
+    resize(size);
+    for (size_t pos = 0; pos < size; pos++) {
+        at(pos) = cstr[pos];
+    }
 }

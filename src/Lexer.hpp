@@ -65,7 +65,7 @@ public:
                 token.ty = Token::Number;
                 token.SetData<String>(new String());
                 do {
-                    token.GetData<String>()->push_back((wchar_t)current);
+                    token.GetData<String>()->push_back((char_t)current);
                     moveNext();
                 } while (isdigit(current) || current == '.');
                 clearBuffer();

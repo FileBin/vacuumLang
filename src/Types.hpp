@@ -49,7 +49,7 @@ public:
         BigDbl,
 
         //strings
-        Char, //utf-8 string character
+        Char, //UTF-32 string character
 
         //Objects
         Object,
