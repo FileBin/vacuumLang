@@ -212,8 +212,8 @@ private:
 
     STD vector<Type> parameters;
 public:
-    Function(String name, Type class_type, Type type = Type::Void, STD vector<Type> args = {})
-        : Member(name, type, class_type, Member::Function) {
+    Function(String name, Type class_type, Type ret_type = Type::Void, STD vector<Type> args = {})
+        : Member(name, ret_type, class_type, Member::Function) {
         parameters = args;
     }
 
