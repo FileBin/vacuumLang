@@ -6,13 +6,7 @@ namespace Objects {
 
     class ClassBase : public Type {
     protected:
-        ClassBase(String name, STD vector<Member> members) {
-
-        }
-    public:
-        static Type CreateType(String name, STD vector<Member> members) {
-
-        }
+        ClassBase(String name, STD vector<Member> members);
     };
 
     class Object : public ClassBase {

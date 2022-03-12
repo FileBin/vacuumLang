@@ -154,6 +154,9 @@ public:
         return ty != Unknown;
     }
 
+    static Type createType(String name, STD vector<Member> members = {});
+    static Type createPrototype(String name);
+
     int calculateClassSize();
 
     PMember getMember(String str);
