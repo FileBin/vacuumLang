@@ -5,7 +5,7 @@
 struct Metadata {
     Tree<Type> ClassTree, InterfaceTree;
 
-    Metadata(): ClassTree(Type::Object) {
+    Metadata() : ClassTree(Type::Object) {
         ClassTree.root->AddChild(Type::SByte);
         ClassTree.root->AddChild(Type::Byte);
         ClassTree.root->AddChild(Type::Short);
@@ -23,7 +23,17 @@ struct Metadata {
     }
 };
 
+#include "Lexer.hpp"
+
 class MetadataGenerator {
 public:
+    typedef STD shared_ptr<Lexer<char_t>> pLexer;
+
+protected:
     Metadata metadata;
+    pLexer lexer;
+
+public:
+    MetadataGenerator(pLexer lexer) : lexer(lexer) {
+    }
 };

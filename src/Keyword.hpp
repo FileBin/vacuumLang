@@ -17,6 +17,8 @@ namespace Constant {
         STR(protected),
         STR(friend),
         STR(interface),
+        STR(constuctor),
+        STR(destuctor),
         STR(var),
 
         STR(as),
@@ -32,6 +34,7 @@ namespace Constant {
 
         STR(sizeof),
         STR(addrof),
+        STR(typeof),
 
         STR(unroll),
 
@@ -58,6 +61,9 @@ public:
         Interface,
         Var,
 
+        Constructor,
+        Destructor,
+
         As,
         Is,
 
@@ -70,6 +76,7 @@ public:
 
         Sizeof,
         Addrof,
+        Typeof,
         Unroll,
 
         NativePointer,

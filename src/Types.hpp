@@ -2,12 +2,12 @@
 
 #include "stdafx.hpp"
 
-
 struct Member;
 
 namespace Constant {
     CEXPRSTR types[]{
         STR(void),
+        STR(bool),
         STR(sbyte),
         STR(byte),
         STR(sht), //aka. short
@@ -31,9 +31,12 @@ class Type : public IPrintable {
 public:
     typedef Member* PMember;
     enum Enum {
+        Class = -2,
         Unknown = -1,
+
         //integers
         Void = 0,
+        Bool,
         SByte,
         Byte,
         Short,
@@ -90,8 +93,9 @@ public:
         case Dbl:
             byteWidth = 8; //64bit
             break;
-        case Object:
-            //TODO: Calculate obj width from map
+        case Class:
+            byteWidth = calculateClassSize();
+            break;
         default:
             byteWidth = -1; //Unknown
             break;
@@ -103,25 +107,25 @@ public:
     String ToString() override {
         char_t buf[0x400];
 
-        SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteWidth: %d })", GetFullName().c_str(), byteWidth);
+        SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteWidth: %d })", getFullName().c_str(), byteWidth);
 
         return buf;
     }
 
-    String GetName() {
+    String getName() {
         return Constant::types[(size_t)type];
     }
 
-    String GetFullName() {
+    String getFullName() {
         String full_name = L"";
         for (const auto& name : location) {
             full_name += name + L".";
         }
-        full_name += GetName();
+        full_name += getName();
         return full_name;
     }
 
-    String GetLlvmName() {
+    String getLlvmName() {
         String llvm_name = L"";
         if (!location.empty()) {
             llvm_name = L"nsp_";
@@ -129,11 +133,11 @@ public:
                 llvm_name += name + L"_";
             }
         }
-        llvm_name += L"typ_" + GetName();
+        llvm_name += L"typ_" + getName();
         return llvm_name;
     }
 
-    static bool TryParse(String str, Type*& t, bool strict = false) {
+    static bool tryParse(String str, Type*& t, bool strict = false) {
         using namespace Constant;
         if (!t) return false;
         Enum ty = Unknown;
@@ -150,7 +154,9 @@ public:
         return ty != Unknown;
     }
 
-    PMember GetMember(String str);
+    int calculateClassSize();
+
+    PMember getMember(String str);
 };
 
 struct Member {
@@ -181,23 +187,23 @@ public:
     }
 
     String GetFullName() {
-        return class_ty.GetFullName() + L"." + name;
+        return class_ty.getFullName() + L"." + name;
     }
 
-    virtual String GetLlvmName() = 0;
+    virtual String GetLlvmName() { return L""; };
 };
 
-struct Field : Member {
+struct Field : public Member {
 public:
     Field(String name, Type class_type, Type type)
         : Member(name, type, class_type, Member::Field) {}
 
     String GetLlvmName() override {
-        return class_ty.GetLlvmName() + L"_fld_" + name;
+        return class_ty.getLlvmName() + L"_fld_" + name;
     }
 };
 
-struct Function : Member {
+struct Function : public Member {
 private:
     String name;
 
@@ -209,11 +215,11 @@ public:
     }
 
     String GetLlvmName() override {
-        return class_ty.GetLlvmName() + L"_fnc_" + name;
+        return class_ty.getLlvmName() + L"_fnc_" + name;
     }
 };
 
-struct Property : Member {
+struct Property : public Member {
 private:
     ::Function f_get, f_set;
 public:
@@ -224,12 +230,12 @@ public:
     }
 
     String GetLlvmName() override {
-        return class_ty.GetLlvmName() + L"_prp_" + name;
+        return class_ty.getLlvmName() + L"_prp_" + name;
     }
 };
 
 typedef ::Type ty;
-ty::PMember ty::GetMember(String str) {
+ty::PMember ty::getMember(String str) {
     for (::Type::PMember& mem : members) {
         if(mem->GetName() == str) {
             return mem;
@@ -237,3 +243,5 @@ ty::PMember ty::GetMember(String str) {
     }
     return nullptr;
 }
+
+#include "Objects.hpp"

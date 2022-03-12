@@ -4,7 +4,7 @@ import native void printf(native_pointer byte fmt, native_va_args);
 namespace Core {
     static class Console {
     private:
-        Console() {
+        construtor() {
             //6 means LC_ALL
             setlocale(6, ".UTF-8".toANCII().beginRef.nativePointer);
         }
