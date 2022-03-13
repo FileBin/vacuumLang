@@ -65,6 +65,8 @@ protected:
     STD vector<String> location;
     STD vector<PMember> members;
 
+    bool isProto = false;
+
     virtual int getClassSize() { return 0; }
 public:
     Type(Enum type_enum = Unknown) {
@@ -72,6 +74,7 @@ public:
     }
 
     int getByteSize() {
+        if(isProto) LogError(String("Type ") + getName() + "is not defined!");
         switch (type) {
         case Object:
         case Void:

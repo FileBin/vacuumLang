@@ -15,7 +15,6 @@ int main() {
     STD shared_ptr<Lexer<>> lexer = STD make_shared<Lexer<>>(file);
 
     MetadataGenerator metaGen(lexer);
-
     //Token token;
     //while((token = lexer->GetNextToken()).ty != Token::End)
     //    wprintf(L"Read token %ls\n", token.ToString().c_str());
