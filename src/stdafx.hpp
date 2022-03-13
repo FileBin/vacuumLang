@@ -28,8 +28,11 @@
 #endif
 
 #define TSTR char_t*
+#define CSTR char*
 #define CTSTR const TSTR
+#define CCSTR const CSTR
 #define CEXPRSTR constexpr char_t const*
+#define CEXPRCSTR constexpr char const*
 
 
 #define interface struct

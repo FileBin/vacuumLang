@@ -5,25 +5,25 @@
 struct Member;
 
 namespace Constant {
-    CEXPRSTR types[]{
-        STR(void),
-        STR(bool),
-        STR(sbyte),
-        STR(byte),
-        STR(sht), //aka. short
-        STR(usht),
-        STR(int),
-        STR(uint),
-        STR(num), //aka. long
-        STR(unum),
+    CEXPRCSTR types[]{
+        "void",
+        "bool",
+        "sbyte",
+        "byte",
+        "sht", //aka. 'short'
+        "usht",
+        "int",
+        "uint",
+        "num", //aka. 'long'
+        "unum",
 
-        STR(flt),
-        STR(dbl),
-        STR(bigdbl),
+        "flt",
+        "dbl",
+        "bigdbl",
 
-        STR(char),
+        "char",
 
-        STR(object),
+        "object",
     };
 }
 
@@ -142,9 +142,9 @@ public:
         Enum ty = Unknown;
         size_t len = 0;
         for (size_t i = 0; i < ARRSIZE(types); i++) {
-            size_t _len = LEN(types[i]);
+            size_t _len = strlen(types[i]);
             if (strict && _len != str.length()) continue;
-            if (len < _len && str.substr(0, _len) == types[i]) {
+            if (len < _len && str.substr(0, _len) == String(types[i])) {
                 len = _len;
                 ty = (Enum)i;
             }

@@ -2,43 +2,43 @@
 #include "stdafx.hpp"
 
 namespace Constant {
-    constexpr char_t const* keywords[] = {
-        STR(native), //import c function
-        STR(import), //import namespace
-        STR(entrypoint), //begin of the code
+    CEXPRCSTR keywords[] = {
+        "native", //import c function
+        "import", //import namespace
+        "entrypoint", //begin of the code
 
         //OOP
-        STR(namespace),
-        STR(class),
-        STR(self),
-        STR(super),
-        STR(public),
-        STR(private),
-        STR(protected),
-        STR(friend),
-        STR(interface),
-        STR(constuctor),
-        STR(destuctor),
-        STR(var),
+        "namespace",
+        "class",
+        "self",
+        "super",
+        "public",
+        "private",
+        "protected",
+        "friend",
+        "interface",
+        "constuctor",
+        "destuctor",
+        "var",
 
-        STR(as),
-        STR(is),
+        "as",
+        "is",
 
-        STR(null),
+        "null",
 
         //modifiers
-        STR(const),
-        STR(static),
+        "const",
+        "static",
 
-        STR(ref),
+        "ref",
 
-        STR(sizeof),
-        STR(addrof),
-        STR(typeof),
+        "sizeof",
+        "addrof",
+        "typeof",
 
-        STR(unroll),
+        "unroll",
 
-        STR(native_pointer),
+        "native_pointer",
     };
 }
 
@@ -135,9 +135,9 @@ public:
         Enum ty = Unknown;
         size_t len = 0;
         for(size_t i=0; i<ARRSIZE(keywords); i++) {
-            size_t klen = LEN(keywords[i]);
+            size_t klen = strlen(keywords[i]);
             if(strict && str.length() != klen) continue;
-            if(len < klen && str.substr(0, klen) == keywords[i]){
+            if(len < klen && str.substr(0, klen) == String(keywords[i])){
                 len = klen;
                 ty = (Enum)i;
             }

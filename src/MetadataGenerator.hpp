@@ -37,5 +37,6 @@ protected:
 
 public:
     MetadataGenerator(pLexer lexer) : lexer(lexer) {
+        
     }
 };

@@ -4,7 +4,7 @@
 #include "Keyword.hpp"
 #include "Operators.hpp"
 
-template<typename _CharT = char_t, int _EOF = -1>
+template<typename _CharT = char_t, int _EOF = EOF>
 class Lexer {
 public:
     typedef _CharT CharType;
@@ -12,11 +12,6 @@ public:
     typedef typename STD basic_istream<_CharT>::int_type IntType;
     typedef STD basic_string<_CharT> StringType;
 
-    union Char {
-        CharType ch;
-        char_t wch;
-        IntType val;
-    };
 private:
     StreamType& stream;
     static constexpr size_t BUFFER_SIZE = 0x80;
@@ -41,7 +36,7 @@ public:
                 token.ty = Token::Identifier;
                 String str;
                 do {
-                    str.push_back((wchar_t)current);
+                    str.push_back((char_t)current);
                     moveNext();
                 } while (iswalnum(current) || current == '_'); //read token
 
@@ -86,7 +81,7 @@ public:
         }
 
         // Comment
-        if (consist(L"//")) {
+        if (consist("//")) {
             skipUntil('\n');
 
             clearBuffer();
@@ -95,17 +90,17 @@ public:
                 return GetNextToken();
         }
 
-        if (consist(L";")) {
+        if (consist(";")) {
             pop();
             return token = Token::CmdEnd;
         }
 
-        if (consist(L",")) {
+        if (consist(",")) {
             pop();
             return token = Token::Comma;
         }
 
-        if (consist(L":")) {
+        if (consist(":")) {
             pop();
             return token = Token::Colon;
         }
@@ -186,10 +181,10 @@ private:
         }
     }
 
-    bool consist(const wchar_t* string) {
+    bool consist(const char* string) {
         size_t i = bufSize();
-        wchar_t ch = string[0];
-        for (const wchar_t* p = string; ch = *p; p++) {
+        char_t ch = static_cast<char_t>(string[0]);
+        for (const char* p = string; ch = static_cast<char_t>(*p); p++) {
             if (i <= 0)
                 return false;
             if (ch != buffer[--i])
