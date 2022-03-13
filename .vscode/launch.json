@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/Linux/Debug/program",
-            "args": [],
+            "args": ["-i", "code.vac"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

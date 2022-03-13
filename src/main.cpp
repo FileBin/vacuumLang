@@ -3,12 +3,13 @@
 #include <codecvt>
 #include "MetadataGenerator.hpp"
 #include "Lexer.hpp"
+#include "ConsoleApplication.hpp"
 
 //===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
-int main(int argc, const char* argv[]) {
-    FILE_STREAM file("Core.vac");
+void programme(ConsoleApplication& app) {
+    FILE_STREAM file(ToStdString(app.getParameterValues("i")[0]));
     auto utf8 = std::locale(std::locale(), new std::codecvt_utf8<char_t>);
     file.imbue(utf8);
     setlocale(LC_ALL, "");
@@ -20,6 +21,9 @@ int main(int argc, const char* argv[]) {
     //Token token;
     //while((token = lexer->GetNextToken()).ty != Token::End)
     //    wprintf(L"Read token %ls\n", token.ToString().c_str());
+}
 
+int main(int argc, char const* argv[]) {
+    ConsoleApplication app(argc, argv, programme);
     return 0;
 }

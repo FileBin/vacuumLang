@@ -32,6 +32,12 @@ struct String : public std_string, public IPrintable {
     String ToString() override {
         return *this;
     }
+
+    String operator=(char_t ch) {
+        *this = String();
+        at(0) = ch;
+        return *this;
+    }
 };
 
 template<typename T>
@@ -131,6 +137,7 @@ std::string ToStdString(const String& str) {
 String operator+(CCSTR cstr, String s) {
     return String(cstr) + s;
 }
+
 String operator+(String s, CCSTR cstr) {
     return s + String(cstr);
 }
