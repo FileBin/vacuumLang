@@ -58,7 +58,8 @@ public:
         Object,
     };
 protected:
-
+    Type* super_type;
+    Type* interfaces;
     Enum type = Unknown;
 
     STD vector<String> location;
@@ -153,8 +154,9 @@ public:
         return ty != Unknown;
     }
 
-    static Type createType(String name, STD vector<Member> members = {});
-    static Type createPrototype(String name);
+    static Type createType(String name, STD vector<String> loc = {}, STD vector<PMember> members = {});
+    static Type createType(Type super_ty, String name, STD vector<String> loc = {}, STD vector<PMember> members = {});
+    static Type createPrototype(String name, STD vector<String> loc = {});
 
     PMember getMember(String str);
 };
@@ -250,3 +252,14 @@ bool operator==(::Type a, ::Type b) {
 }
 
 #include "Objects.hpp"
+
+Type Type::createType(String name, STD vector<String> loc, STD vector<PMember> members = {}) {
+    return createType(Objects::Object(), name, loc, members);
+}
+
+Type Type::createType(Type super_ty, String name, STD vector<String> loc, STD vector<PMember> members = {}) {
+    using Objects::Object;
+    Object obj = Object(loc, name, members);
+    obj.super_type = new Type(super_ty);
+    return obj;
+}
