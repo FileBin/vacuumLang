@@ -74,7 +74,7 @@ public:
     }
 
     int getByteSize() {
-        if(isProto) LogError(String("Type ") + getName() + "is not defined!");
+        if(isProto) LogError(String("Type ") + getName() + String("is not defined!"));
         switch (type) {
         case Object:
         case Void:
