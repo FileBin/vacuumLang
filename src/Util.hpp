@@ -72,9 +72,16 @@ public:
         }
 
         String ToString() {
-            String str = data->ToString() + "\n";
+            return ToString(0);
+        }
+        //min level 0, max level 128
+        String ToString(int level) {
+            char buf[0x100];
+            memset(&buf, ' ', sizeof(buf));
+            buf[level*2] = 0;
+            String str = buf + data->ToString() + "\n";
             for(PNode child : children) {
-                str += "\t" + child->ToString();
+                str += child->ToString(level+1);
             }
             return str;
         }

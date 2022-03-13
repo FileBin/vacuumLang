@@ -118,7 +118,7 @@ public:
     }
 
     String dump() {
-        return "Class Tree: " + metadata.ClassTree.ToString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
+        return "ClassTree: " + metadata.ClassTree.ToString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
     }
 };
 

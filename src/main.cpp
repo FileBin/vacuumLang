@@ -17,7 +17,7 @@ void programme(ConsoleApplication& app) {
 
     MetadataGenerator metaGen(lexer);
     //metaGen.generateMetadata();
-    wprintf(L"metadata dump:\n %ls\n", metaGen.dump().c_str());
+    app.Log(L"metadata dump:\n" + metaGen.dump() + "\n");
     //Token token;
     //while((token = lexer->GetNextToken()).ty != Token::End)
     //    wprintf(L"Read token %ls\n", token.ToString().c_str());
