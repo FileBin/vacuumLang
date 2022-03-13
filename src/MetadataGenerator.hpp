@@ -37,6 +37,26 @@ protected:
 
 public:
     MetadataGenerator(pLexer lexer) : lexer(lexer) {
-        
+
+    }
+    void generateMetadata() {
+        Token token;
+        while ((token = lexer->GetNextToken()).ty != Token::End) {}
+
+        token = lexer->GetNextToken();
+        if (token.ty == Token::Keyword && token.GetData<Keyword>()->ty == Keyword::Class) {
+            token = lexer->GetNextToken();
+            if (token.ty == Token::Identifier) {
+                String* className = token.GetData<String>();
+                token = lexer->GetNextToken();
+                if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
+                    
+                } else {
+                    LogError("Missing class opening bracket");
+                }
+            } else {
+                LogError("Class definition error");
+            }
+        }
     }
 };
