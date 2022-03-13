@@ -125,7 +125,7 @@ protected:
 
     void ParseType4Var(Type& superType) {
         superType = Type::Object;
-        if (GetNextToken().ty == Token::Operator && currentToken.GetData<Operator>()->type == Operator::Assign) {
+        if (GetNextToken().ty == Token::Operator && currentToken.GetData<Operator>()->ty == Operator::Assign) {
             //TODO: insert type check
         } else LogError("= expected!");
     }
@@ -140,14 +140,14 @@ protected:
 
     /// parenexpr ::= '(' expression ')'
     node_t ParseParenExpr() {
-        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->type != Operator::BracketOpen)
+        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->ty != Operator::BracketOpen)
             LogError("'(' expected!");
         GetNextToken();
         auto V = ParseExpression();
         if (!V)
             return nullptr;
 
-        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->type != Operator::BracketClose)
+        if (currentToken.ty != Token::Operator || currentToken.GetData<Operator>()->ty != Operator::BracketClose)
             LogError("')' expected!");
         GetNextToken(); // eat ).
         return V;
@@ -158,10 +158,10 @@ protected:
     node_t ParseBinOpRHS(int priority, node_t LHS) {
         if (currentToken.ty != Token::Operator) LogError("Operator expected!");
         Operator& op = *currentToken.GetData<Operator>();
-        if (!Operator::hasBinaryForm(op.type)) LogError("Binary operator expected!");
+        if (!Operator::hasBinaryForm(op.ty)) LogError("Binary operator expected!");
         // If this is a binop, find its precedence.
         while (true) {
-            int op_priority = Operator::GetPriority(op.type);
+            int op_priority = Operator::GetPriority(op.ty);
 
             // If this is a binop that binds at least as tightly as the current binop,
             // consume it, otherwise we are done.
@@ -169,7 +169,7 @@ protected:
                 return LHS;
 
             // Okay, we know this is a binop.
-            auto BinOp = op.type;
+            auto BinOp = op.ty;
             GetNextToken(); // eat binop
 
             // Parse the primary expression after the binary operator.
@@ -182,7 +182,7 @@ protected:
             int next_priority = 0;
 
             if (currentToken.ty == Token::Operator)
-                next_priority = Operator::GetPriority(currentToken.GetData<Operator>()->type);
+                next_priority = Operator::GetPriority(currentToken.GetData<Operator>()->ty);
 
             if (op_priority < next_priority) {
                 RHS = ParseBinOpRHS(priority + 1, std::move(RHS));

@@ -1,5 +1,5 @@
-import native void setlocale(int category,native_pointer byte locale);
-import native void printf(native_pointer byte fmt, native_va_args);
+import native void setlocale(int category,native_p byte locale);
+import native void printf(native_p byte fmt, native_va_args);
 
 namespace Core {
     static class Console {
