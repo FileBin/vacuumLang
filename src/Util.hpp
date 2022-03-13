@@ -9,6 +9,9 @@
 
 struct String;
 
+String operator+(CCSTR, String);
+String operator+(String, CCSTR);
+
 typedef STD basic_string<char_t> std_string;
 
 interface IPrintable {
@@ -35,21 +38,24 @@ template<typename T>
 class Tree : IPrintable {
 public:
     struct Node;
-    typedef  STD shared_ptr<Node> PNode;
+    typedef Node* PNode;
     struct Node : IPrintable {
     private:
+        friend class Tree;
         PNode parent;
         STD vector<PNode> children;
     public:
 
-        T data;
-        PNode AddChild(T d) {
-            auto ptr = STD make_shared<Node>({ this, {}, d });
+        T* data;
+        PNode AddChild(T* d) {
+            auto ptr = new Node();
+            ptr->parent = this;
+            ptr->data = d;
             children.push_back(ptr);
             return ptr;
         }
 
-        bool RemoveChild(T d) {
+        bool RemoveChild(T* d) {
             for (auto it = children.begin(); it != children.end(); it++) {
                 if ((*it)->data == d) {
                     children.erase(it);
@@ -60,9 +66,9 @@ public:
         }
 
         String ToString() {
-            String str = data.ToString() + "\n";
+            String str = data->ToString() + "\n";
             for(PNode child : children) {
-                str += "\t" + child->ToString() + "\n";
+                str += "\t" + child->ToString();
             }
             return str;
         }
@@ -70,20 +76,21 @@ public:
 
     PNode root;
 
-    Tree(T rootData = {}) {
-        root = STD make_shared<Node>();
+    Tree(T* rootData = {}) {
+        root = new Node();
         root->data = rootData;
     }
 
-    PNode find(T data) {
+    template<typename R>
+    PNode find(R data) {
         STD vector<PNode> l = { root }, buf;
         do {
             buf.clear();
-            for (const PNode& node : l) {
-                if (node->data == data) {
+            for (PNode node : l) {
+                if (*node->data == data) {
                     return node;
                 }
-                buf.insert(node->children.begin(), node->children.end());
+                buf.insert(buf.begin(), node->children.begin(), node->children.end());
             }
             l = buf;
         } while (!buf.empty());
@@ -91,7 +98,7 @@ public:
     }
 
     String ToString() {
-        return String("Tree: {\n") + root->ToString() + "}\n";
+        return String("{\n") + root->ToString() + "}\n";
     }
 };
 
@@ -119,4 +126,11 @@ std::string ToStdString(const String& str) {
     for (size_t pos = 0; pos < size; pos++) {
         at(pos) = cstr[pos];
     }
+}
+
+String operator+(CCSTR cstr, String s) {
+    return String(cstr) + s;
+}
+String operator+(String s, CCSTR cstr) {
+    return s + String(cstr);
 }

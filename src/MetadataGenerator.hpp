@@ -1,31 +1,66 @@
 #pragma once
 #include "stdafx.hpp"
-#include "Types.hpp"
 #include "Functions.hpp"
+
+class Type;
 
 struct Metadata {
     Tree<Type> ClassTree, InterfaceTree;
 
-    Metadata() : ClassTree(Type::Object) {
-        auto val_ty = ClassTree.root->AddChild(Objects::ValueType());
-        val_ty->AddChild(Type::SByte);
-        val_ty->AddChild(Type::Byte);
-        val_ty->AddChild(Type::Short);
-        val_ty->AddChild(Type::UShort);
-        val_ty->AddChild(Type::Int);
-        val_ty->AddChild(Type::UInt);
-        val_ty->AddChild(Type::Num);
-        val_ty->AddChild(Type::UNum);
-
-        val_ty->AddChild(Type::Flt);
-        val_ty->AddChild(Type::Dbl);
-        val_ty->AddChild(Type::BigDbl);
-
-        val_ty->AddChild(Type::Char);
-    }
+    Metadata();
 };
 
 #include "Lexer.hpp"
+#include "Types.hpp"
+
+Metadata::Metadata() : ClassTree(Type::createPrototype(this, "Object")) {
+    auto val_ty = ClassTree.root->AddChild(Type::createPrototype(this, "ValueType"));
+
+    auto node_bool = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Bool)));
+    auto node_sbyte = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::SByte)));
+    auto node_byte = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Byte)));
+    auto node_short = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Short)));
+    auto node_ushort = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UShort)));
+    auto node_int = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Int)));
+    auto node_uint = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UInt)));
+    auto node_num = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Num)));
+    auto node_unum = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UNum)));
+
+    auto node_flt = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Flt)));
+    auto node_dbl = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Dbl)));
+
+    auto node_char = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Char)));
+
+    ClassTree.root->data->createDefinition(nullptr, Objects::Object::getMembers(this));
+
+    val_ty->data->createDefinition(ClassTree.root->data);
+    
+    node_bool->data->type = Type::Bool;
+    node_sbyte->data->type = Type::SByte;
+    node_byte->data->type = Type::Byte;
+    node_short->data->type = Type::Short;
+    node_ushort->data->type = Type::UShort;
+    node_int->data->type = Type::Int;
+    node_uint->data->type = Type::UInt;
+    node_num->data->type = Type::Num;
+    node_unum->data->type = Type::UNum;
+    node_flt->data->type = Type::Flt;
+    node_dbl->data->type = Type::Dbl;
+    node_char->data->type = Type::Char;
+
+    node_bool->data->createDefinition(val_ty->data);
+    node_sbyte->data->createDefinition(val_ty->data);
+    node_byte->data->createDefinition(val_ty->data);
+    node_short->data->createDefinition(val_ty->data);
+    node_ushort->data->createDefinition(val_ty->data);
+    node_int->data->createDefinition(val_ty->data);
+    node_uint->data->createDefinition(val_ty->data);
+    node_num->data->createDefinition(val_ty->data);
+    node_unum->data->createDefinition(val_ty->data);
+    node_flt->data->createDefinition(val_ty->data);
+    node_dbl->data->createDefinition(val_ty->data);
+    node_char->data->createDefinition(val_ty->data);
+}
 
 class MetadataGenerator {
 public:
@@ -54,13 +89,13 @@ public:
                     if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
                         token = lexer->GetNextToken();
                         if (token.ty == Token::Keyword) {
-                            if (token.GetData<Keyword>()->isVisiblityModifier()){
-                                
+                            if (token.GetData<Keyword>()->isVisiblityModifier()) {
+
                             } else {
                                 LogError(String("Illegal keyword ") + token.GetData<Keyword>()->ToString());
                             }
                         }
-                        metadata.ClassTree.root->AddChild(Type::createType(*className, currentNamespaces, {}));
+                        metadata.ClassTree.root->AddChild(Type::createType(&metadata, *className, currentNamespaces, {}));
                     } else {
                         LogError("Missing class opening bracket");
                     }
@@ -82,7 +117,8 @@ public:
         }
     }
 
-    String dump(){
-        
+    String dump() {
+        return "Class Tree: " + metadata.ClassTree.ToString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
     }
 };
+

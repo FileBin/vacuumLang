@@ -8,9 +8,14 @@ namespace Objects {
     class ClassBase : public Type {
     protected:
         String name;
-        ClassBase(STD vector<String> location, String name, STD vector<PMember> pmembers);
+        ClassBase(Metadata* pmeta, Type* super_type, STD vector<String> location, String name, STD vector<PMember> pmembers);
     public:
-        String getName() override {
+        static Type* createProto(Metadata* pmeta, STD vector<String> location, String name){
+            auto proto = new ClassBase(pmeta, nullptr, location, name, {});
+            proto->isProto = true;
+            return proto;
+        }
+        virtual String getName() override {
             return name;
         }
 
@@ -19,67 +24,77 @@ namespace Objects {
 
     class Object : public ClassBase {
     public:
-        Object(String name = "Object", STD vector<PMember> pmembers = {});
-        Object(STD vector<String> location, String name = "Object", STD vector<PMember> pmembers = {});
+        Object(Metadata* pmeta, String name = "Object");
+        Object(Metadata* pmeta, STD vector<String> location, String name = "Object", STD vector<PMember> pmembers = {});
+
+        virtual String getName() override {
+            return name;
+        }
+
+        static String getClassName() {
+            return "Object";
+        }
+
+        static STD vector<PMember> getMembers(Metadata* pmeta) {
+            Type* super = getInstance(pmeta, getClassName());
+            return {
+            new Function("hash", super, getInstance(pmeta, Type::UNum)),
+            new Function("equals", super, getInstance(pmeta, Type::Bool)),
+            new Function("clone", super, getInstance(pmeta, Type::Object)),
+            // new Function("toString", this, new StringO()),
+            // new Function("getType", this, new TypeO())
+            };
+        }
     };
 
     class ValueType : public Object {
     public:
-        ValueType() : Object("ValueType") {}
+        ValueType(Metadata* pmeta) : Object(pmeta, "ValueType") {
+           // super_type = new ValueType();
+        }
+        ValueType(Metadata* pmeta, String name) : Object(pmeta, name) {
+           // super_type = new ValueType();
+        }
     };
 
     class StringO : public Object {
     public:
-        StringO() : Object() {}
+        StringO(Metadata* pmeta) : Object(pmeta, "String") {}
     };
 
     class TypeO : public Object {
     public:
-        TypeO() : Object() {}
+        TypeO(Metadata* pmeta) : Object(pmeta, "Type") {}
     };
 
-    ClassBase::ClassBase(STD vector<String> loc, String str, STD vector<PMember> pmembers) {
+    ClassBase::ClassBase(Metadata* pmeta, Type* super_ty, STD vector<String> loc, String str, STD vector<PMember> pmembers) : Type(pmeta, Type::Class) {
         location = loc;
         members = pmembers;
-        type = Type::Class;
         name = str;
+        super_type = super_ty;
     }
 
-    Object::Object(String name, STD vector<PMember> pmembers)
-        : ClassBase({}, name, {
-            new Function("toString", *this, StringO()),
-            new Function("hash", *this, Type::UNum),
-            new Function("equals", *this, Type::Bool),
-            new Function("clone", *this, Type::Object),
-            new Function("getType", *this, TypeO())
-            }) {
-        members.insert(members.end(), pmembers.begin(), pmembers.end());
-    }
+    Object::Object(Metadata* pmeta, String name)
+        : ClassBase(pmeta, this, {}, name, Object::getMembers(pmeta)) {}
 
-    Object::Object(STD vector<String> location, String name, STD vector<PMember> pmembers)
-        : ClassBase(location, name, {
-            new Function("toString", *this, StringO()),
-            new Function("hash", *this, Type::UNum),
-            new Function("equals", *this, Type::Bool),
-            new Function("clone", *this, Type::Object),
-            new Function("getType", *this, TypeO())
-            }) {
-        members.insert(members.end(), pmembers.begin(), pmembers.end());
-    }
+    Object::Object(Metadata* pmeta, STD vector<String> location, String name, STD vector<PMember> pmembers)
+        : ClassBase(pmeta, this, location, name, Object::getMembers(pmeta)) {}
 }
 
 #include "MetadataGenerator.hpp"
 
 int Objects::ClassBase::getClassSize() {
     int size = 0;
-    for(PMember &mem : members){
+    if(super_type)
+        size = super_type->getByteSize();
+    for(PMember &mem : members) {
         if(mem->getMemberType() == Member::Field) {
-            ::Type ty = mem->getType();
+            ::Type* ty = mem->getType();
             if(mem->isRef) {
                 size += 8; //ref_size is 64bit
             } else {
-                if(ty == static_cast<::Type>(*this)) LogError("Cycle definition is not allowed (pls use ref)!");
-                size_t mem_s = ty.getByteSize();
+                if(ty == static_cast<::Type*>(this)) LogError("Cycle definition is not allowed (pls use ref)!");
+                size_t mem_s = ty->getByteSize();
                 if(mem_s == 0) LogError("Intancing of abstract class is not allowed");
                 size += mem_s;
             }
