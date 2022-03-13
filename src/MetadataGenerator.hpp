@@ -41,21 +41,43 @@ public:
     }
     void generateMetadata() {
         Token token;
-        while ((token = lexer->GetNextToken()).ty != Token::End) {}
 
+        std::vector<String> currentNamespaces;
+        String currentVisibilityModifier = "";
         token = lexer->GetNextToken();
-        if (token.ty == Token::Keyword && token.GetData<Keyword>()->ty == Keyword::Class) {
-            token = lexer->GetNextToken();
-            if (token.ty == Token::Identifier) {
-                String* className = token.GetData<String>();
+        if (token.ty == Token::Keyword) {
+            if (token.GetData<Keyword>()->ty == Keyword::Class) {
                 token = lexer->GetNextToken();
-                if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
-                    
+                if (token.ty == Token::Identifier) {
+                    String* className = token.GetData<String>();
+                    token = lexer->GetNextToken();
+                    if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
+                        token = lexer->GetNextToken();
+                        if (token.ty == Token::Keyword) {
+                            if (token.GetData<Keyword>()->isVisiblityModifier()){
+                                
+                            } else {
+                                LogError(String("Illegal keyword ") + token.GetData<Keyword>()->ToString());
+                            }
+                        }
+                        metadata.ClassTree.root->AddChild(Type::createType(*className, currentNamespaces, {}));
+                    } else {
+                        LogError("Missing class opening bracket");
+                    }
                 } else {
-                    LogError("Missing class opening bracket");
+                    LogError("Class definition error");
                 }
-            } else {
-                LogError("Class definition error");
+            } else if (token.GetData<Keyword>()->ty == Keyword::Namespace) {
+                token = lexer->GetNextToken();
+                if (token.ty == Token::Identifier) {
+                    currentNamespaces.push_back(*token.GetData<String>());
+                    token = lexer->GetNextToken();
+                    if (!(token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen)) {
+                        LogError("Missing namespace opening bracket");
+                    }
+                } else {
+                    LogError("Namespace definition error");
+                }
             }
         }
     }
