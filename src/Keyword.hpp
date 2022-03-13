@@ -38,7 +38,8 @@ namespace Constant {
 
         "unroll",
 
-        "native_pointer",
+        "native_p",
+        "native_pp",
     };
 }
 
