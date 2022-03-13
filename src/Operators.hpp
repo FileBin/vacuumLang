@@ -124,12 +124,12 @@ class Operator : public IPrintable {
         //Other
         Dot,
         Ternar,
-    } type;
+    } ty;
 
     int priority = 1;
     public:
     Operator(Enum e = Unknown){
-        type = e;
+        ty = e;
         priority = GetPriority(e);
     }
 
@@ -254,10 +254,10 @@ class Operator : public IPrintable {
             break;
         }
     }
-    size_t GetLen() { return LEN(Constant::operators[(size_t)type]); }
+    size_t GetLen() { return LEN(Constant::operators[(size_t)ty]); }
 
     String ToString() override {
-        switch (type)
+        switch (ty)
         {
         case Assign: return L"Assign";
         case AssignAdd: return L"AssignAdd";
