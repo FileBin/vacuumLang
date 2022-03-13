@@ -1,5 +1,6 @@
 #pragma once
 #include "stdafx.hpp"
+#include "Functions.hpp"
 #include "Types.hpp"
 
 namespace Objects {
