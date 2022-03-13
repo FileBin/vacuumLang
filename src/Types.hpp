@@ -153,8 +153,8 @@ public:
         return ty != Unknown;
     }
 
-    static Type createType(String name, STD vector<Member> members = {});
-    static Type createPrototype(String name);
+    static Type createType(String name, STD vector<String> loc = {}, STD vector<Member> members = {});
+    static Type createPrototype(String name, STD vector<String> loc = {});
 
     PMember getMember(String str);
 };
@@ -248,5 +248,7 @@ ty::PMember ty::getMember(String str) {
 bool operator==(::Type a, ::Type b) {
     return a.getFullName() == b.getFullName();
 }
+
+Type Type::createType(String name,)
 
 #include "Objects.hpp"
