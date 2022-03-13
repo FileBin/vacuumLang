@@ -32,11 +32,11 @@ struct String : public std_string, public IPrintable {
 };
 
 template<typename T>
-class Tree {
+class Tree : IPrintable {
 public:
     struct Node;
     typedef  STD shared_ptr<Node> PNode;
-    struct Node {
+    struct Node : IPrintable {
     private:
         PNode parent;
         STD vector<PNode> children;
@@ -57,6 +57,14 @@ public:
                 }
             }
             return false;
+        }
+
+        String ToString() {
+            String str = data.ToString() + "\n";
+            for(PNode child : children) {
+                str += "\t" + child->ToString() + "\n";
+            }
+            return str;
         }
     };
 
@@ -80,6 +88,10 @@ public:
             l = buf;
         } while (!buf.empty());
         return nullptr;
+    }
+
+    String ToString() {
+        return String("Tree: {\n") + root->ToString() + "}\n";
     }
 };
 

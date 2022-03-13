@@ -16,16 +16,18 @@
 #ifdef USE_WSTR
     #define FILE_STREAM STD wifstream
     #define LEN(s) wcslen(s)
-    #define SPRINT(buf, size, fmt, a...) swprintf(buf, size, fmt, a);
+    #define PRINT(fmt, a...) wprintf(fmt, a)
+    #define SPRINT(buf, size, fmt, a...) swprintf(buf, size, fmt, a)
     #define STRPARAM "%ls"
     #define SPREF L""
     typedef wchar_t char_t;
 #else
     #define FILE_STREAM STD ifstream
     #define LEN(s) strlen(s)
-     #define SPRINT(buf, size, fmt, a...) sprintf(buf, size, fmt, a);
-     #define STRPARAM "%s"
-     #define SPREF 
+    #define PRINT(fmt, a...) printf(fmt, a)
+    #define SPRINT(buf, size, fmt, a...) sprintf(buf, size, fmt, a)
+    #define STRPARAM "%s"
+    #define SPREF 
     #define STR(s) #s
     typedef char char_t;
 #endif

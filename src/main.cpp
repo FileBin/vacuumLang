@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
-int main() {
+int main(int argc, const char* argv[]) {
     FILE_STREAM file("Core.vac");
     auto utf8 = std::locale(std::locale(), new std::codecvt_utf8<char_t>);
     file.imbue(utf8);
