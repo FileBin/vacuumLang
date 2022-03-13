@@ -16,7 +16,8 @@ void programme(ConsoleApplication& app) {
     STD shared_ptr<Lexer<>> lexer = STD make_shared<Lexer<>>(file);
 
     MetadataGenerator metaGen(lexer);
-    //metaGen.generateMetadata();
+    metaGen.generateMetadata();
+
     app.Log(L"metadata dump:\n" + metaGen.dump() + "\n");
     //Token token;
     //while((token = lexer->GetNextToken()).ty != Token::End)

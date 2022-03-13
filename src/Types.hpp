@@ -87,6 +87,10 @@ public:
         isProto = other.isProto;
     }
 
+    Metadata* getMeta() {
+        return pmeta;
+    }
+
     int getByteSize() {
         if (isProto) LogError(String("Type ") + getName() + String(" is not defined!"));
         switch (type) {
@@ -124,7 +128,7 @@ public:
         }
     }
 
-    Enum GetEnum() { return type; }
+    Enum getEnum() { return type; }
 
     String ToString() override {
         char_t buf[0x400] = { 0 };
@@ -183,8 +187,6 @@ public:
     }
 
     static bool tryParse(String str, Type*& t, bool strict = false);
-    Type* getInstance(String str);
-    Type* getInstance(Enum en);
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
         super_type = super_ty;
@@ -268,7 +270,9 @@ private:
     ::Function f_get, f_set;
 public:
     Property(String name, PType class_type, PType type)
-        : Member(name, type, class_type, Member::Property), f_get(name + L"_get", class_type, type), f_set(name + L"_set", class_type, class_type->getInstance(Type::Void), { type }) {
+        : Member(name, type, class_type, Member::Property),
+        f_get(name + L"_get", class_type, type),
+        f_set(name + L"_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void), { type }) {
         ty = type;
         mem_ty = Member::Property;
     }
@@ -338,17 +342,9 @@ Type* Type::createPrototype(Metadata* m, String name, STD vector<String> loc) {
     return Objects::ClassBase::createProto(m, loc, name);
 }
 
-Type* Type::getInstance(Type::Enum ty) {
-    return getInstance(pmeta, ty);
-}
-
-Type* Type::getInstance(String str) {
-    return getInstance(pmeta, str);
-}
-
 Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
     using namespace Objects;
-    if(ty == Type::Void) return createPrototype(pmeta, "Void");
+    if (ty == Type::Void) return createPrototype(pmeta, "Void");
     return getInstance(pmeta, getEnumTypeName(ty));
 }
 

@@ -34,7 +34,7 @@ Metadata::Metadata() : ClassTree(Type::createPrototype(this, "Object")) {
     ClassTree.root->data->createDefinition(nullptr, Objects::Object::getMembers(this));
 
     val_ty->data->createDefinition(ClassTree.root->data);
-    
+
     node_bool->data->type = Type::Bool;
     node_sbyte->data->type = Type::SByte;
     node_byte->data->type = Type::Byte;
@@ -78,40 +78,42 @@ public:
         Token token;
 
         std::vector<String> currentNamespaces;
-        String currentVisibilityModifier = "";
-        token = lexer->GetNextToken();
-        if (token.ty == Token::Keyword) {
-            if (token.GetData<Keyword>()->ty == Keyword::Class) {
-                token = lexer->GetNextToken();
-                if (token.ty == Token::Identifier) {
-                    String* className = token.GetData<String>();
+        Keyword currentVisibilityModifier = Keyword::Private;
+        while (token.ty != Token::End) {
+            token = lexer->GetNextToken();
+            if (token.ty == Token::Keyword) {
+                if (token.GetData<Keyword>()->ty == Keyword::Class) {
                     token = lexer->GetNextToken();
-                    if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
+                    if (token.ty == Token::Identifier) {
+                        String className = *token.GetData<String>();
                         token = lexer->GetNextToken();
-                        if (token.ty == Token::Keyword) {
-                            if (token.GetData<Keyword>()->isVisiblityModifier()) {
+                        if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
+                            token = lexer->GetNextToken();
+                            if (token.ty == Token::Keyword) {
+                                if (token.GetData<Keyword>()->isVisiblityModifier()) {
 
-                            } else {
-                                LogError(String("Illegal keyword ") + token.GetData<Keyword>()->ToString());
+                                } else {
+                                    LogError(String("Illegal keyword ") + token.GetData<Keyword>()->ToString());
+                                }
                             }
+                            metadata.ClassTree.root->AddChild(Type::createType(&metadata, className, currentNamespaces, {}));
+                        } else {
+                            LogError("Missing class opening bracket");
                         }
-                        metadata.ClassTree.root->AddChild(Type::createType(&metadata, *className, currentNamespaces, {}));
                     } else {
-                        LogError("Missing class opening bracket");
+                        LogError("Class definition error");
                     }
-                } else {
-                    LogError("Class definition error");
-                }
-            } else if (token.GetData<Keyword>()->ty == Keyword::Namespace) {
-                token = lexer->GetNextToken();
-                if (token.ty == Token::Identifier) {
-                    currentNamespaces.push_back(*token.GetData<String>());
+                } else if (token.GetData<Keyword>()->ty == Keyword::Namespace) {
                     token = lexer->GetNextToken();
-                    if (!(token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen)) {
-                        LogError("Missing namespace opening bracket");
+                    if (token.ty == Token::Identifier) {
+                        currentNamespaces.push_back(*token.GetData<String>());
+                        token = lexer->GetNextToken();
+                        if (!(token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen)) {
+                            LogError("Missing namespace opening bracket");
+                        }
+                    } else {
+                        LogError("Namespace definition error");
                     }
-                } else {
-                    LogError("Namespace definition error");
                 }
             }
         }

@@ -75,10 +75,10 @@ namespace Objects {
     }
 
     Object::Object(Metadata* pmeta, String name)
-        : ClassBase(pmeta, this, {}, name, Object::getMembers(pmeta)) {}
+        : ClassBase(pmeta, getInstance(pmeta, Type::Object), {}, name, Object::getMembers(pmeta)) {}
 
     Object::Object(Metadata* pmeta, STD vector<String> location, String name, STD vector<PMember> pmembers)
-        : ClassBase(pmeta, this, location, name, Object::getMembers(pmeta)) {}
+        : ClassBase(pmeta, getInstance(pmeta, Type::Object), location, name, Object::getMembers(pmeta)) {}
 }
 
 #include "MetadataGenerator.hpp"
