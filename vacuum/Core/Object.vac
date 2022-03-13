@@ -1,0 +1,6 @@
+class object {
+    Core.Type getType() {}
+    unum hash() {}
+    string ToString();
+    bool Equals(object other);
+}

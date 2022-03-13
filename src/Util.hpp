@@ -15,7 +15,7 @@ String operator+(String, CCSTR);
 typedef STD basic_string<char_t> std_string;
 
 interface IPrintable {
-    virtual String ToString() = 0;
+    virtual String toString() = 0;
 };
 
 struct String : public std_string, public IPrintable {
@@ -29,7 +29,7 @@ struct String : public std_string, public IPrintable {
     String(const char* cstr);
 
     String(const std_string& wstr) : std_string(wstr) {}
-    String ToString() override {
+    String toString() override {
         return *this;
     }
 
@@ -53,7 +53,7 @@ public:
     public:
 
         T* data;
-        PNode AddChild(T* d) {
+        PNode addChild(T* d) {
             auto ptr = new Node();
             ptr->parent = this;
             ptr->data = d;
@@ -61,7 +61,7 @@ public:
             return ptr;
         }
 
-        bool RemoveChild(T* d) {
+        bool removeChild(T* d) {
             for (auto it = children.begin(); it != children.end(); it++) {
                 if ((*it)->data == d) {
                     children.erase(it);
@@ -71,7 +71,7 @@ public:
             return false;
         }
 
-        String ToString() {
+        String toString() {
             return ToString(0);
         }
         //min level 0, max level 128
@@ -79,7 +79,7 @@ public:
             char buf[0x100];
             memset(&buf, ' ', sizeof(buf));
             buf[level*2] = 0;
-            String str = buf + data->ToString() + "\n";
+            String str = buf + data->toString() + "\n";
             for(PNode child : children) {
                 str += child->ToString(level+1);
             }
@@ -110,8 +110,8 @@ public:
         return nullptr;
     }
 
-    String ToString() {
-        return String("{\n") + root->ToString() + "}\n";
+    String toString() {
+        return String("{\n") + root->toString() + "}\n";
     }
 };
 

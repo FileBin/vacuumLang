@@ -1,10 +1,8 @@
 #pragma once
 #include "stdafx.hpp"
 
-struct Token
-{
-    enum Enum
-    {
+struct Token : IPrintable {
+    enum Enum {
         Unknown = 0x7fffffff,
         
         End = -1, // EOF
@@ -19,10 +17,7 @@ struct Token
         Operator,
     };
 
-    union {
-        Enum ty;
-        int val;
-    };
+    Enum ty;
 
     void* data = 0;
     size_t data_size = 0;
@@ -33,7 +28,7 @@ struct Token
         copy(other);
     }
 
-    ::String ToString(){
+    ::String toString(){
         static constexpr auto buf_size = 0x400*sizeof(wchar_t);
         //wchar_t* buf = (wchar_t*)malloc(buf_size);
         //memset(buf, 0, buf_size);
@@ -41,7 +36,7 @@ struct Token
         const wchar_t* tokenStr = toString(ty);
         if(data_size > 0) {
             IPrintable *ip = reinterpret_cast<IPrintable*>(data);
-            swprintf(buf, 0x400, tokenStr, ip->ToString().c_str());
+            swprintf(buf, 0x400, tokenStr, ip->toString().c_str());
         }
         else return tokenStr;
         return buf;
@@ -58,12 +53,12 @@ struct Token
     }
 
     template<typename T>
-    T* GetData(){
+    T* getData(){
         return reinterpret_cast<T*>(data);
     }
 
     template<typename T>
-    bool SetData(T* d) {
+    bool setData(T* d) {
         data_size = sizeof(T);
         data = d;
         return true;
@@ -109,7 +104,7 @@ private:
     }
 
     void copy(const Token& other) {
-        val = other.val;
+        ty = other.ty;
         if(other.data) {
             if(data)
                 free(data);

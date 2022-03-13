@@ -1,0 +1,9 @@
+namespace Core.Reflection {
+    class Type {
+        private static native_p Type allTypes;
+        
+        String name { get; private set; };
+        unum byteWidth { get; private set; };
+        Array members;
+    }
+}

@@ -156,7 +156,7 @@ namespace AST {
             return llvm::ConstantFP::get(*parser->TheContext, APFloat(APFloat::IEEEdouble(), s));
 
         default:
-            LogError("Unknown number type");
+            logError("Unknown number type");
         }
     }
 
@@ -165,7 +165,7 @@ namespace AST {
         // Look this variable up in the function.
         llvm::Value* V = parser->NamedValues[name];
         if (!V)
-            LogError("Unknown variable name");
+            logError("Unknown variable name");
         return V;
     }
 
@@ -189,7 +189,7 @@ namespace AST {
             // Convert bool 0/1 to double 0.0 or 1.0
             return parser->Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*parser->TheContext), "booltmp");
         default:
-            LogError("invalid binary operator");
+            logError("invalid binary operator");
         }
     }
 
@@ -198,11 +198,11 @@ namespace AST {
         // Look up the name in the global module table.
         llvm::Function* CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
         if (!CalleeF)
-            LogError("Unknown function referenced");
+            logError("Unknown function referenced");
 
         // If argument mismatch error.
         if (CalleeF->arg_size() != Args.size())
-            LogError("Incorrect # arguments passed");
+            logError("Incorrect # arguments passed");
 
         std::vector<llvm::Value*> ArgsV;
         for (unsigned i = 0, e = Args.size(); i != e; ++i)

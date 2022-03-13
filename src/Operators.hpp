@@ -256,7 +256,7 @@ class Operator : public IPrintable {
     }
     size_t GetLen() { return LEN(Constant::operators[(size_t)ty]); }
 
-    String ToString() override {
+    String toString() override {
         switch (ty)
         {
         case Assign: return L"Assign";

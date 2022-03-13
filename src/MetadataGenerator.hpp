@@ -14,26 +14,22 @@ struct Metadata {
 #include "Types.hpp"
 
 Metadata::Metadata() : ClassTree(Type::createPrototype(this, "Object")) {
-    auto val_ty = ClassTree.root->AddChild(Type::createPrototype(this, "ValueType"));
+    auto val_ty = ClassTree.root->addChild(Type::createPrototype(this, "ValueType"));
 
-    auto node_bool = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Bool)));
-    auto node_sbyte = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::SByte)));
-    auto node_byte = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Byte)));
-    auto node_short = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Short)));
-    auto node_ushort = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UShort)));
-    auto node_int = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Int)));
-    auto node_uint = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UInt)));
-    auto node_num = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Num)));
-    auto node_unum = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::UNum)));
+    auto node_bool = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Bool)));
+    auto node_sbyte = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::SByte)));
+    auto node_byte = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Byte)));
+    auto node_short = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Short)));
+    auto node_ushort = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::UShort)));
+    auto node_int = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Int)));
+    auto node_uint = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::UInt)));
+    auto node_num = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Num)));
+    auto node_unum = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::UNum)));
 
-    auto node_flt = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Flt)));
-    auto node_dbl = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Dbl)));
+    auto node_flt = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Flt)));
+    auto node_dbl = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Dbl)));
 
-    auto node_char = val_ty->AddChild(Type::createPrototype(this, Type::getEnumTypeName(Type::Char)));
-
-    ClassTree.root->data->createDefinition(nullptr, Objects::Object::getMembers(this));
-
-    val_ty->data->createDefinition(ClassTree.root->data);
+    auto node_char = val_ty->addChild(Type::createPrototype(this, Type::getName(Type::Char)));
 
     node_bool->data->type = Type::Bool;
     node_sbyte->data->type = Type::SByte;
@@ -82,37 +78,37 @@ public:
         while (token.ty != Token::End) {
             token = lexer->GetNextToken();
             if (token.ty == Token::Keyword) {
-                if (token.GetData<Keyword>()->ty == Keyword::Class) {
+                if (token.getData<Keyword>()->ty == Keyword::Class) {
                     token = lexer->GetNextToken();
                     if (token.ty == Token::Identifier) {
-                        String className = *token.GetData<String>();
+                        String className = *token.getData<String>();
                         token = lexer->GetNextToken();
-                        if (token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen) {
+                        if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
                             token = lexer->GetNextToken();
                             if (token.ty == Token::Keyword) {
-                                if (token.GetData<Keyword>()->isVisiblityModifier()) {
-
+                                if (token.getData<Keyword>()->isVisiblityModifier()) {
+                                    
                                 } else {
-                                    LogError(String("Illegal keyword ") + token.GetData<Keyword>()->ToString());
+                                    logError(String("Illegal keyword ") + token.getData<Keyword>()->toString());
                                 }
                             }
-                            metadata.ClassTree.root->AddChild(Type::createType(&metadata, className, currentNamespaces, {}));
+                            metadata.ClassTree.root->addChild(Type::createPrototype(&metadata, className, currentNamespaces));
                         } else {
-                            LogError("Missing class opening bracket");
+                            logError("Missing class opening bracket");
                         }
                     } else {
-                        LogError("Class definition error");
+                        logError("Class definition error");
                     }
-                } else if (token.GetData<Keyword>()->ty == Keyword::Namespace) {
+                } else if (token.getData<Keyword>()->ty == Keyword::Namespace) {
                     token = lexer->GetNextToken();
                     if (token.ty == Token::Identifier) {
-                        currentNamespaces.push_back(*token.GetData<String>());
+                        currentNamespaces.push_back(*token.getData<String>());
                         token = lexer->GetNextToken();
-                        if (!(token.ty == Token::Operator && token.GetData<Operator>()->ty == Operator::BraceOpen)) {
-                            LogError("Missing namespace opening bracket");
+                        if (!(token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen)) {
+                            logError("Missing namespace opening bracket");
                         }
                     } else {
-                        LogError("Namespace definition error");
+                        logError("Namespace definition error");
                     }
                 }
             }
@@ -120,7 +116,7 @@ public:
     }
 
     String dump() {
-        return "ClassTree: " + metadata.ClassTree.ToString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
+        return "ClassTree: " + metadata.ClassTree.toString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
     }
 };
 

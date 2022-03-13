@@ -43,8 +43,8 @@ public:
                 Keyword* kw;
                 if (Keyword::TryParse(str, kw, true)) {
                     token.ty = Token::Keyword;
-                    token.SetData<Keyword>(kw);
-                } else token.SetData<String>(new String(str));
+                    token.setData<Keyword>(kw);
+                } else token.setData<String>(new String(str));
                 clearBuffer();
                 return token;
             }
@@ -52,9 +52,9 @@ public:
             // Number: [0-9.]+
             if (iswdigit(current) || current == '.') {
                 token.ty = Token::Number;
-                token.SetData<String>(new String());
+                token.setData<String>(new String());
                 do {
-                    token.GetData<String>()->push_back((char_t)current);
+                    token.getData<String>()->push_back((char_t)current);
                     moveNext();
                 } while (isdigit(current) || current == '.');
                 clearBuffer();
@@ -64,11 +64,11 @@ public:
             //Const String
             if (current == '\"') {
                 token.ty = Token::String;
-                token.SetData<String>(new String());
+                token.setData<String>(new String());
                 while (current != _EOF) {
                     moveNext();
                     if (current == '\"') break;
-                    token.GetData<String>()->push_back((wchar_t)current);
+                    token.getData<String>()->push_back((wchar_t)current);
                 }
                 clearBuffer();
                 moveNext();
@@ -110,7 +110,7 @@ public:
         if (Operator::TryParse(reversedBuffer(), op)) {
             pop(op->GetLen()); //drop operator from the buffer
             token.ty = Token::Operator;
-            token.SetData<Operator>(op);
+            token.setData<Operator>(op);
             return token;
         }
 
@@ -119,7 +119,7 @@ public:
             return token = Token::End;
 
         token = Token::Unknown;
-        token.SetData<String>(new String(reversedBuffer()));
+        token.setData<String>(new String(reversedBuffer()));
         clearBuffer();
         moveNext();
         return token;

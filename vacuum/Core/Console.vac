@@ -7,6 +7,7 @@ namespace Core {
             //6 means LC_ALL
             setlocale(6, ".UTF-8".toANCII().beginRef.nativePointer);
         }
+        
         public void write(String str) {
             printf(str.toUTF8().beginRef.nativePointer);
         }

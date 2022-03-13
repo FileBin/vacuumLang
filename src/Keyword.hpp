@@ -127,7 +127,7 @@ public:
         ty = en;
     }
 
-    String ToString() {
+    String toString() {
         return Constant::keywords[(size_t)ty];
     }
 

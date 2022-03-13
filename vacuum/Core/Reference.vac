@@ -1,0 +1,14 @@
+
+class ref<T> {
+    static ref<T> fromNative(native_p T p) {
+        return Core.Memory.incrUseCount(p);
+    }
+
+    construtor(native_p pointer) {
+        Core.Memory.incrUseCount(p);
+    }
+
+    destructor() {
+        Core.Memory.decrUseCount(p);
+    }
+}

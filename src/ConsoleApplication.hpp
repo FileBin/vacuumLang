@@ -33,7 +33,7 @@ public:
     }
 
     void Log(IPrintable& o) {
-        Log(o.ToString());
+        Log(o.toString());
     }
 
     void Log(String s) {

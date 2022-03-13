@@ -1,0 +1,45 @@
+import native void memcpy(native_p void dest, native_p void src, unum n);
+import native void memset(native_p void dest, int val, unum n);
+
+namespace Core {
+    class Array {
+        private native_p void pBegin;
+        private uint elemSize;
+        unum elemCount;
+
+        public unum byteWidth => elemCount*elemSize;
+
+        public construtor(Type t, unum count) {
+            elemSize = t.byteWidth;
+            elemCount = count;
+            unum byteSize = count*elemSize;
+            pBegin = malloc(byteSize);
+            if(pBegin == 0) {
+                throw Core.Exceptions.OutOfMemoryException();
+            }
+            native_p void pElem = pBegin;
+            for(unum i=0; i < count; ++i) {
+                t.getConstructor().call(pElem);
+                pElem = pElem.move(elemSize);
+            }
+        }
+
+        public construtor(ref Array other) {
+            unum byteWidth = byteSize;
+
+            //reallocate if arr is different size
+            if(other.byteSize != byteWidth) {
+                byteSize = byteWidth = other.byteSize;
+                free(pBegin);
+                pBegin = malloc(byteWidth);
+            }
+            memcpy(pBegin, other.pBegin, byteWidth);
+            elemCount = other.elemCount;
+            elemSize = other.elemSize;
+        }
+
+        public ref object operator[](unum idx) {
+            return ref.fromNative(pBegin.move(idx * elemSize));
+        }
+    }
+}

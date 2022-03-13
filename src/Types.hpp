@@ -92,7 +92,8 @@ public:
     }
 
     int getByteSize() {
-        if (isProto) LogError(String("Type ") + getName() + String(" is not defined!"));
+        if(type == Type::Class) return 0;
+        if (isProto) logError(String("Type ") + getName() + String(" is not defined!"));
         switch (type) {
         case Object:
         case Void:
@@ -130,7 +131,7 @@ public:
 
     Enum getEnum() { return type; }
 
-    String ToString() override {
+    String toString() override {
         char_t buf[0x400] = { 0 };
 
         SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteSize: %d }", getFullName().c_str(), getByteSize());
@@ -161,37 +162,17 @@ public:
         return llvm_name;
     }
 
-    static String getEnumTypeName(Enum en) {
-        switch (en)
-        {
-        case Void: return "Void";
-        case Ref: return "Reference";
-        case Bool: return "Bool";
-        case SByte: return "SByte";
-        case Byte: return "Byte";
-        case Short: return "Short";
-        case UShort: return "UShort";
-        case Int: return "Int";
-        case UInt: return "UInt";
-        case Num: return "Num";
-        case UNum: return "UNum";
-        case Flt: return "Flt";
-        case Dbl: return "Dbl";
-        case Char: return "Char";
-        case Object: return "Object";
-
-        default:
-            LogError("Unknown TypeName!");
-        }
-        return "";
-    }
-
-    static bool tryParse(String str, Type*& t, bool strict = false);
-
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
         super_type = super_ty;
         members = _members;
         isProto = false;
+    }
+    static String getName(Enum en) {
+        if(en > 0) {
+            return Constant::types[(size_t)en];
+        }
+        logError("Fuck yoy leatherman");
+        return "";
     }
     static Type* getInstance(Metadata* pmeta, String str);
     static Type* getInstance(Metadata* pmeta, Enum en);
@@ -245,7 +226,7 @@ public:
         : Member(name, type, class_type, Member::Field) {}
 
     String getLlvmName() override {
-        return class_ty->getLlvmName() + L"_fld_" + name;
+        return L"fld_" + name;
     }
 };
 
@@ -278,7 +259,7 @@ public:
     }
 
     String getLlvmName() override {
-        return class_ty->getLlvmName() + L"_prp_" + name;
+        return L"prp_" + name;
     }
 };
 
@@ -302,50 +283,14 @@ bool operator==(::Type& a, String b) {
 
 #include "Objects.hpp"
 
-bool Type::tryParse(String str, Type*& t, bool strict) {
-    using namespace Constant;
-    if (!t) return false;
-    Enum ty = Unknown;
-    size_t len = 0;
-    for (size_t i = 0; i < ARRSIZE(types); i++) {
-        size_t _len = strlen(types[i]);
-        if (strict && _len != str.length()) continue;
-        if (len < _len && str.substr(0, _len) == String(types[i])) {
-            len = _len;
-            ty = (Enum)i;
-        }
-    }
-    t = createInstance(nullptr, ty);
-    return ty != Unknown;
-}
-
-Type* Type::createType(Metadata* pmeta, String name, STD vector<String> loc, STD vector<PMember> members) {
-    return createType(pmeta, new Objects::Object(pmeta), name, loc, members);
-}
-
-Type* Type::createType(Metadata* pmeta, Type* super_ty, String name, STD vector<String> loc, STD vector<PMember> members) {
-    using Objects::Object;
-    Object* obj = new Object(pmeta, loc, name, members);
-    obj->super_type = super_ty;
-    return obj;
-}
-
-Type* Type::createInstance(Metadata* pmeta, Type::Enum ty) {
-    using namespace Objects;
-    if (ty == Type::Object || ty == Type::Void) {
-        return new Objects::Object(pmeta);
-    }
-    return new ValueType(pmeta, getEnumTypeName(ty));
-}
-
 Type* Type::createPrototype(Metadata* m, String name, STD vector<String> loc) {
-    return Objects::ClassBase::createProto(m, loc, name);
+    return Objects::ClassFactory::createProto(m, loc, name);
 }
 
 Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
     using namespace Objects;
-    if (ty == Type::Void) return createPrototype(pmeta, "Void");
-    return getInstance(pmeta, getEnumTypeName(ty));
+    if (ty == Type::Void) return createPrototype(pmeta, "void");
+    return getInstance(pmeta, getName(ty));
 }
 
 Type* Type::getInstance(Metadata* pmeta, String str) {

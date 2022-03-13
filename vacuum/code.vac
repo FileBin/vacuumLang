@@ -1,0 +1,3 @@
+entrypoint {
+    Core.Console.write("Hello world!");
+}
