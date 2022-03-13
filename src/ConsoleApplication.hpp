@@ -37,6 +37,6 @@ public:
     }
 
     void Log(String s) {
-        PRINT(SPREF "[clock:%d] " STRPARAM "\n", clock(), s.c_str());
+        PRINT(SPREF "[clock:%ju] " STRPARAM "\n", (uintmax_t)clock() / (CLOCKS_PER_SEC/1000), s.c_str());
     }
 };

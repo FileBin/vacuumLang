@@ -63,5 +63,6 @@
         "codecvt": "cpp",
         "*.def": "cpp",
         "iostream": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

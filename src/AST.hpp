@@ -3,7 +3,7 @@
 #include "ASTheader.h"
 #include "Operators.hpp"
 #include "Keyword.hpp"
-#include "Types.h"
+#include "Types.hpp"
 
 class Parser;
 
@@ -20,61 +20,60 @@ namespace AST {
     class ExprAST : public IASTNode {
     public:
         STD shared_ptr<Parser> parser;
-        ExprAST(Parser *parser) : parser(parser) {}
+        ExprAST(Parser* parser) : parser(parser) {}
         virtual ~ExprAST() = default;
     };
 
     /// NumberExprAST - Expression class for numeric literals like "1.0".
     class NumberExprAST : public ExprAST
     {
-        Type type;
+        Type::Enum ty;
         String str;
 
     public:
-        NumberExprAST(Parser *parser, String str) : ExprAST(parser), str(str)
-        {
-            type = Type::Num;
+        NumberExprAST(Parser* parser, String str) : ExprAST(parser), str(str) {
+            ty = Type::Num;
 
             if (str.find('e') || str.find('.'))
             {
-                type = Type::LongDbl;
+                ty = Type::Dbl;
             }
         }
 
-        llvm::Value *GenCode() override;
+        llvm::Value* GenCode() override;
     };
 
     /// VariableExprAST - Expression class for referencing a variable, like "a".
     class VariableExpression : public ExprAST {
-        Type type;
+        Type* type;
         String name;
 
     public:
-        VariableExpression(Parser *parser, String name, Type type) : ExprAST(parser), name(name), type(type) {}
+        VariableExpression(Parser* parser, String name, Type* type) : ExprAST(parser), name(name), type(type) {}
 
-        llvm::Value *GenCode() override;
+        llvm::Value* GenCode() override;
     };
 
     class ClassExpression : public ExprAST {
-        String Name;
+        String name;
         STD vector<Keyword> modifiers;
-        Type Parent;
-        
-        public:
-        ClassExpression(Parser* parser, String name, STD vector<Keyword> modifiers = {}, Type parent = Type::Object)
-        : ExprAST(parser), Name(name), modifiers(modifiers), Parent(parent) {}
+        Type* super;
+
+    public:
+        ClassExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
+            : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
 
         llvm::Value* GenCode() override;
     };
 
     class InterfaceExpression : public ExprAST {
-        String Name;
+        String name;
         STD vector<Keyword> modifiers;
-        Type Parent;
-        
-        public:
-        InterfaceExpression(Parser* parser, String name, STD vector<Keyword> modifiers = {}, Type parent = Type::Object)
-        : ExprAST(parser), Name(name), modifiers(modifiers), Parent(parent) {}
+        Type* super;
+
+    public:
+        InterfaceExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
+            : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
 
         llvm::Value* GenCode() override;
     };
@@ -86,11 +85,11 @@ namespace AST {
         STD unique_ptr<ExprAST> LHS, RHS;
 
     public:
-        BinaryExprAST(Parser *parser, Operator Op, STD unique_ptr<ExprAST> LHS,
-                      STD unique_ptr<ExprAST> RHS)
+        BinaryExprAST(Parser* parser, Operator Op, STD unique_ptr<ExprAST> LHS,
+            STD unique_ptr<ExprAST> RHS)
             : ExprAST(parser), Op(Op), LHS(STD move(LHS)), RHS(STD move(RHS)) {}
 
-        llvm::Value *GenCode() override;
+        llvm::Value* GenCode() override;
     };
 
     /// CallExprAST - Expression class for function calls.
@@ -100,11 +99,10 @@ namespace AST {
         STD vector<STD unique_ptr<ExprAST>> Args;
 
     public:
-        CallExprAST(Parser *parser, const String &Callee,
-                    STD vector<STD unique_ptr<ExprAST>> Args)
+        CallExprAST(Parser* parser, const String& Callee,
+            STD vector<STD unique_ptr<ExprAST>> Args)
             : ExprAST(parser), Callee(Callee), Args(STD move(Args)) {}
-
-        llvm::Value *GenCode() override;
+        llvm::Value* GenCode() override;
     };
 
     /// PrototypeAST - This class represents the "prototype" for a function,
@@ -117,11 +115,11 @@ namespace AST {
         STD vector<String> Args;
 
     public:
-        PrototypeAST(Parser *parser, const String &Name, STD vector<String> Args)
+        PrototypeAST(Parser* parser, const String& Name, STD vector<String> Args)
             : parser(parser), Name(Name), Args(STD move(Args)) {}
 
-        llvm::Function *GenCode();
-        const String &getName() const { return Name; }
+        llvm::Function* GenCode();
+        const String& getName() const { return Name; }
     };
 
     /// FunctionAST - This class represents a function definition itself.
@@ -132,24 +130,25 @@ namespace AST {
         STD unique_ptr<ExprAST> Body;
 
     public:
-        FunctionAST(Parser *parser, STD unique_ptr<PrototypeAST> Proto,
-                    STD unique_ptr<ExprAST> Body)
+        FunctionAST(Parser* parser, STD unique_ptr<PrototypeAST> Proto,
+            STD unique_ptr<ExprAST> Body)
             : parser(parser), Proto(STD move(Proto)), Body(STD move(Body)) {}
 
-        llvm::Function *GenCode();
+        llvm::Function* GenCode();
     };
+}
+
+#include "Parser.hpp"
+
 
 //===----------------------------------------------------------------------===//
 // Code Generation
 //===----------------------------------------------------------------------===//
-
-#include "Parser.hpp"
-
-    llvm::Value *NumberExprAST::GenCode()
-    {
+namespace AST {
+    llvm::Value* NumberExprAST::GenCode() {
         using namespace llvm;
         auto s = ToStdString(str);
-        switch (type.GetEnum())
+        switch (ty)
         {
         case ::Type::Num:
             return ConstantInt::get(*parser->TheContext, APSInt(s));
@@ -161,23 +160,23 @@ namespace AST {
         }
     }
 
-    llvm::Value *VariableExpression::GenCode()
+    llvm::Value* VariableExpression::GenCode()
     {
         // Look this variable up in the function.
-        llvm::Value *V = parser->NamedValues[name];
+        llvm::Value* V = parser->NamedValues[name];
         if (!V)
             LogError("Unknown variable name");
         return V;
     }
 
-    llvm::Value *BinaryExprAST::GenCode()
+    llvm::Value* BinaryExprAST::GenCode()
     {
-        llvm::Value *L = LHS->GenCode();
-        llvm::Value *R = RHS->GenCode();
+        llvm::Value* L = LHS->GenCode();
+        llvm::Value* R = RHS->GenCode();
         if (!L || !R)
             return nullptr;
 
-        switch (Op.type)
+        switch (Op.ty)
         {
         case Operator::Add:
             return parser->Builder->CreateFAdd(L, R, "addtmp");
@@ -194,10 +193,10 @@ namespace AST {
         }
     }
 
-    llvm::Value *CallExprAST::GenCode()
+    llvm::Value* CallExprAST::GenCode()
     {
         // Look up the name in the global module table.
-        llvm::Function *CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
+        llvm::Function* CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
         if (!CalleeF)
             LogError("Unknown function referenced");
 
@@ -205,7 +204,7 @@ namespace AST {
         if (CalleeF->arg_size() != Args.size())
             LogError("Incorrect # arguments passed");
 
-        std::vector<llvm::Value *> ArgsV;
+        std::vector<llvm::Value*> ArgsV;
         for (unsigned i = 0, e = Args.size(); i != e; ++i)
         {
             ArgsV.push_back(Args[i]->GenCode());
@@ -216,30 +215,31 @@ namespace AST {
         return parser->Builder->CreateCall(CalleeF, ArgsV, "calltmp");
     }
 
-    llvm::Function *PrototypeAST::GenCode()
+    llvm::Function* PrototypeAST::GenCode()
     {
         using namespace llvm;
         using llvm::Type;
+        using llvm::Function;
         // Make the function type:  double(double,double) etc.
-        std::vector<Type *> Doubles(Args.size(), Type::getDoubleTy(*parser->TheContext));
-        FunctionType *FT =
+        std::vector<Type*> Doubles(Args.size(), Type::getDoubleTy(*parser->TheContext));
+        FunctionType* FT =
             FunctionType::get(Type::getDoubleTy(*parser->TheContext), Doubles, false);
 
-        Function *F =
+        Function* F =
             Function::Create(FT, Function::ExternalLinkage, ToStdString(Name), parser->TheModule.get());
 
         // Set names for all arguments.
         unsigned Idx = 0;
-        for (auto &Arg : F->args())
+        for (auto& Arg : F->args())
             Arg.setName(ToStdString(Args[Idx++]));
 
         return F;
     }
 
-    llvm::Function *FunctionAST::GenCode() {
+    llvm::Function* FunctionAST::GenCode() {
         using namespace llvm;
         // First, check for an existing function from a previous 'extern' declaration.
-        llvm::Function *TheFunction = parser->TheModule->getFunction(ToStdString(Proto->getName()));
+        llvm::Function* TheFunction = parser->TheModule->getFunction(ToStdString(Proto->getName()));
 
         if (!TheFunction)
             TheFunction = Proto->GenCode();
@@ -248,15 +248,15 @@ namespace AST {
             return nullptr;
 
         // Create a new basic block to start insertion into.
-        BasicBlock *BB = BasicBlock::Create(*parser->TheContext, "entry", TheFunction);
+        BasicBlock* BB = BasicBlock::Create(*parser->TheContext, "entry", TheFunction);
         parser->Builder->SetInsertPoint(BB);
 
         // Record the function arguments in the NamedValues map.
         parser->NamedValues.clear();
-        for (auto &Arg : TheFunction->args())
+        for (auto& Arg : TheFunction->args())
             parser->NamedValues[Utf8ToWstring(std::string(Arg.getName()))] = &Arg;
 
-        if (llvm::Value *RetVal = Body->GenCode())
+        if (llvm::Value* RetVal = Body->GenCode())
         {
             // Finish off the function.
             parser->Builder->CreateRet(RetVal);

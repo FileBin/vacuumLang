@@ -1,6 +1,7 @@
 #pragma once
 #include "config.h"
 
+#include <unistd.h>
 #include <cstdlib>
 #include <string>
 #include <cstring>

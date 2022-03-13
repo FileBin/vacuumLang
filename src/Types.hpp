@@ -30,6 +30,7 @@ class Type : public IPrintable {
 public:
     typedef Member* PMember;
     enum Enum {
+        Ref = -3,
         Class = -2,
         Unknown = -1,
 
@@ -113,6 +114,9 @@ public:
         case Dbl:
             return 8; //64bit
 
+        case Ref:
+            return 12; //8(pointer) + 4(memory allocation size)
+
         case Class:
             return getClassSize();
         default:
@@ -156,6 +160,8 @@ public:
     static String getEnumTypeName(Enum en) {
         switch (en)
         {
+        case Void: return "Void";
+        case Ref: return "Reference";
         case Bool: return "Bool";
         case SByte: return "SByte";
         case Byte: return "Byte";
@@ -342,9 +348,7 @@ Type* Type::getInstance(String str) {
 
 Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
     using namespace Objects;
-    if (ty == Type::Object || ty == Type::Void) {
-        return getInstance(pmeta, "Object");
-    }
+    if(ty == Type::Void) return createPrototype(pmeta, "Void");
     return getInstance(pmeta, getEnumTypeName(ty));
 }
 
