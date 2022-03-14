@@ -202,7 +202,9 @@ private:
     }
     //current token '('
     void parseFunction(Mods mods, String name) {
-        if(token.ty != Token::Operator && token.)
+        if(token.ty != Token::Operator && token.getData<Operator>()->ty != Operator::BraceOpen) 
+            logError("'(' expected!");
+        
     }
 
     void parseProperty() {
