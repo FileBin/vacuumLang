@@ -29,6 +29,7 @@ namespace Constant {
         //modifiers
         "const",
         "static",
+        "volatile",
 
         "ref",
 
@@ -72,6 +73,7 @@ public:
 
         Const,
         Static,
+        Volatile,
 
         Ref,
 
@@ -91,7 +93,7 @@ public:
             case Public:
             case Private:
             case Protected:
-            case Native:
+            case Volatile:
             return true;
 
             default:

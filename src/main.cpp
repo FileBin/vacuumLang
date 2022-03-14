@@ -9,7 +9,9 @@
 // Main driver code.
 //===----------------------------------------------------------------------===//
 void programme(ConsoleApplication& app) {
-    FILE_STREAM file(ToStdString(app.getParameterValues("i")[0]));
+    String path = app.getParameterValues("i")[0];
+    FILE_STREAM file(ToStdString(path));
+    if(!file.is_open()) logError("File" + path + " not founded");
     auto utf8 = std::locale(std::locale(), new std::codecvt_utf8<char_t>);
     file.imbue(utf8);
     setlocale(LC_ALL, "");

@@ -20,6 +20,11 @@ private:
     Token token;
 public:
     Lexer(StreamType& stream) : stream(stream) {}
+
+    Token getCurrentToken() {
+        return token;
+    }
+
     // GetNextToken - Return the next token from stream.
     Token GetNextToken() {
         using namespace std;

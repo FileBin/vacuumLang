@@ -61,55 +61,48 @@ Metadata::Metadata() : ClassTree(Type::createPrototype(this, "Object")) {
 class MetadataGenerator {
 public:
     typedef STD shared_ptr<Lexer<char_t>> pLexer;
+    typedef STD vector<Keyword> Mods;
 
 protected:
     Metadata metadata;
+    Token token;
     pLexer lexer;
+    std::vector<String> currentNamespaces;
 
 public:
+
     MetadataGenerator(pLexer lexer) : lexer(lexer) {
 
     }
-    void generateMetadata() {
-        Token token;
 
-        std::vector<String> currentNamespaces;
-        Keyword currentVisibilityModifier = Keyword::Private;
+    void generateMetadata() {
+        STD vector<Keyword> modifiers;
         while (token.ty != Token::End) {
-            token = lexer->GetNextToken();
+            moveNext();
             if (token.ty == Token::Keyword) {
-                if (token.getData<Keyword>()->ty == Keyword::Class) {
-                    token = lexer->GetNextToken();
-                    if (token.ty == Token::Identifier) {
-                        String className = *token.getData<String>();
-                        token = lexer->GetNextToken();
-                        if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
-                            token = lexer->GetNextToken();
-                            if (token.ty == Token::Keyword) {
-                                if (token.getData<Keyword>()->isVisiblityModifier()) {
-                                    
-                                } else {
-                                    logError(String("Illegal keyword ") + token.getData<Keyword>()->toString());
-                                }
-                            }
-                            metadata.ClassTree.root->addChild(Type::createPrototype(&metadata, className, currentNamespaces));
-                        } else {
-                            logError("Missing class opening bracket");
-                        }
-                    } else {
-                        logError("Class definition error");
-                    }
-                } else if (token.getData<Keyword>()->ty == Keyword::Namespace) {
-                    token = lexer->GetNextToken();
-                    if (token.ty == Token::Identifier) {
-                        currentNamespaces.push_back(*token.getData<String>());
-                        token = lexer->GetNextToken();
-                        if (!(token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen)) {
-                            logError("Missing namespace opening bracket");
-                        }
-                    } else {
-                        logError("Namespace definition error");
-                    }
+                Keyword kw = *token.getData<Keyword>();
+                if (kw.isModifier()) {
+                    addModifier(kw, modifiers);
+                }
+                switch (kw.ty) {
+                case Keyword::Class:
+                    parseClass(modifiers);
+                    break;
+                case Keyword::Namespace:
+                    parseNamespace();
+                    break;
+                }
+                if (token.getData<Keyword>()->ty == Keyword::Namespace) {
+                    // token = lexer->GetNextToken();
+                    // if (token.ty == Token::Identifier) {
+                    //     currentNamespaces.push_back(*token.getData<String>());
+                    //     token = lexer->GetNextToken();
+                    //     if (!(token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen)) {
+                    //         logError("Missing namespace opening bracket");
+                    //     }
+                    // } else {
+                    //     logError("Namespace definition error");
+                    // }
                 }
             }
         }
@@ -117,6 +110,102 @@ public:
 
     String dump() {
         return "ClassTree: " + metadata.ClassTree.toString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
+    }
+
+private:
+
+    Token moveNext() {
+        return token = lexer->GetNextToken();
+    }
+
+    void addModifier(Keyword mod, Mods& mods) {
+        if (!mod.isModifier()) logError(mod.toString() + "is not a modifier");
+        for (Keyword& m : mods) {
+            if (m.ty == mod.ty) {
+                logWarning("Dublicate modifier " + mod.toString() + "!");
+                continue;
+            }
+            if (m.isVisiblityModifier() && mod.isVisiblityModifier()) {
+                logError("Multi visiblity modifiers are not allowed!");
+            }
+        }
+    }
+
+    //current ::= Class
+    void parseClass(Mods modifiers) {
+        //Keyword currentVisibilityModifier = Keyword::Private;
+        if (token.ty != Token::Keyword || token.getData<Keyword>()->ty != Keyword::Class)
+            logError("'class' expected!");
+
+        if (token.ty == Token::Identifier) {
+            String className = *token.getData<String>();
+            moveNext();
+            if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
+                metadata.ClassTree.root->addChild(Type::createPrototype(&metadata, className, currentNamespaces));
+                Mods modifiers = {};
+                while (1) {
+                    if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceClose) break;
+                    if (token.ty == Token::Keyword) {
+                        Keyword kw = *token.getData<Keyword>();
+                        if (kw.isModifier()) {
+                            addModifier(kw, modifiers);
+                        } else {
+                            logError("Unknown keyword " + kw.toString() + "!");
+                        }
+                        moveNext();
+                        continue;
+                    }
+                    if (token.ty == Token::Identifier) {
+                        Type::createPrototype(&metadata, *token.getData<String>(), currentNamespaces);
+                        moveNext();
+                        String name;
+                        if (token.ty == Token::Identifier) {
+                            name = *token.getData<String>();
+                            moveNext();
+                            //Function
+                            if (token.ty == Token::Operator) {
+                                //Function
+                                if (token.getData<Operator>()->ty == Operator::BracketOpen) {
+                                    parseFunction(modifiers, name);
+                                    continue;
+                                }
+                                if (token.getData<Operator>()->ty == Operator::BraceOpen) {
+                                    parseProperty();
+                                    continue;
+                                }
+                            }
+                            if (token.ty == Token::CmdEnd) {
+                                parseField();
+                                continue;
+                            }
+
+                            logError("Unknown operator");
+                        }
+                    }
+                }
+            } else {
+                logError("Missing class opening bracket");
+            }
+        } else {
+            logError("Class definition error");
+        }
+    }
+    void parseNamespace() {
+
+    }
+    void parseMember() {
+
+    }
+
+    void parseField() {
+
+    }
+    //current token '('
+    void parseFunction(Mods mods, String name) {
+    }
+
+    void parseProperty() {
+
     }
 };
 

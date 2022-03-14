@@ -1,14 +1,35 @@
+import native native_p malloc(unum n);
 
-class ref<T> {
-    static ref<T> fromNative(native_p T p) {
-        return Core.Memory.incrUseCount(p);
+class ref {
+    native_p void ptr;
+    private native_p uint useCount;
+
+    private construtor(native_p pointer) {
+        ptr = p;
+        useCount = (native_p uint)malloc(sizeof(uint));
+        if(useCount == 0) throw Core.Exceptions.OutOfMemoryException();
+        useCount.write(1);
     }
 
-    construtor(native_p pointer) {
-        Core.Memory.incrUseCount(p);
+    public ref operator=(ref other) {
+        ptr = other.ptr;
+        useCount = other.useCount;
+    }
+
+    private void incr() {
+        useCount.write(useCount.read()+1);
+    }
+
+    private void decr() {
+        uint c = useCount.read();
+        useCount.write(--c);
+        if(c == 0) {
+            free(p);
+            free(useCount);
+        }   
     }
 
     destructor() {
-        Core.Memory.decrUseCount(p);
+        decr();
     }
 }

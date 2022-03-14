@@ -1,0 +1,13 @@
+import native void printf(native_p byte fmt, native_va_args);
+import native native_p malloc(unum n);
+import native native_p memset(native_p ptr, int v, unum n);
+
+entrypoint {
+    native_p byte c_str = (native_p byte)malloc(4);
+    memset(c_str, 72, 1);           //'H'
+    memset(c_str.move(1), 105, 1);  //'i'
+    memset(c_str.move(2), 33, 1);   //'!'
+    memset(c_str.move(3), 0, 1);    //'\0'
+
+    printf(c_str);
+}

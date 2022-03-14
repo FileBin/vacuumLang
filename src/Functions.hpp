@@ -6,3 +6,7 @@
 void logError(String Str) {
     throw Str;
 }
+
+void logWarning(String str) {
+    PRINT(SPREF "Warning: " STRPARAM, str);
+}
