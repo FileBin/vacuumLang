@@ -249,11 +249,15 @@ public:
 struct Property : public Member {
 private:
     ::Function f_get, f_set;
+    ::Field* variable = nullptr;
 public:
-    Property(String name, PType class_type, PType type)
+    Property(String name, PType class_type, PType type, bool need_variable = false)
         : Member(name, type, class_type, Member::Property),
-        f_get(name + L"_get", class_type, type),
-        f_set(name + L"_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void), { type }) {
+        f_get(name + "_get", class_type, type),
+        f_set(name + "_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void), { type }) {
+            if(need_variable){
+                variable = new ::Field(name + "_var", class_type, type);
+            }
         ty = type;
         mem_ty = Member::Property;
     }

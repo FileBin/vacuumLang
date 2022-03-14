@@ -24,6 +24,9 @@ namespace Constant {
         "as",
         "is",
 
+        "get",
+        "set",
+
         "null",
 
         //modifiers
@@ -68,6 +71,9 @@ public:
 
         As,
         Is,
+
+        Get, 
+        Set,
 
         Null,
 
