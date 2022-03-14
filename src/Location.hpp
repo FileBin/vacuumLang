@@ -1,6 +1,8 @@
 #pragma once
 #include "stdafx.hpp"
 
+struct Type;
+
 struct Location : IPrintable {
 public:
     struct Node {
@@ -18,6 +20,9 @@ public:
         }
     };
 private:
+    friend Location operator+(Location, Type*);
+    friend Location operator+(Location, String);
+
     STD vector<Node> data;
 public:
     String toString() override {
@@ -47,4 +52,31 @@ public:
         }
         return llvm_name;
     }
+
+    Location& operator+=(String nsp) {
+        data.push_back({ nsp, Location::Node::Namespace });
+        return *this;
+    }
+
+    Location& operator+=(Type* ty) {
+        data.push_back({ ty->getName(), Location::Node::Class });
+        return *this;
+    }
 };
+
+Location operator+(Location a, Type* b);
+Location operator+(Location a, String nsp);
+
+#include "Types.hpp"
+
+Location operator+(Location a, Type* b) {
+    Location loc = a;
+    loc += b;
+    return loc;
+}
+
+Location operator+(Location a, String nsp) {
+    Location loc = a;
+    loc += nsp;
+    return loc;
+}

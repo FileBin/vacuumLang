@@ -12,6 +12,7 @@ struct Metadata {
 
 #include "Lexer.hpp"
 #include "Types.hpp"
+#include "TokenBufferStream.hpp"
 
 Metadata::Metadata() : ClassTree(Type::createPrototype(this, "Object")) {
     auto val_ty = ClassTree.root->addChild(Type::createPrototype(this, "ValueType"));
@@ -76,31 +77,8 @@ public:
     }
 
     void generateMetadata() {
-        STD vector<Keyword> modifiers;
         moveNext(); //init
-        while (token.ty != Token::End) {
-            Keyword kw;
-            while (1) { // parse modifiers
-                if (token.ty != Token::Keyword) break;
-                kw = *token.getData<Keyword>();
-                if (!kw.isModifier()) break;
-                addModifier(kw, modifiers);
-                moveNext();
-            }
-            if (token.ty != Token::Keyword) logError("Keyword expected!");
-            switch (kw.ty) {
-            case Keyword::Class:
-                parseClass(modifiers);
-                break;
-            case Keyword::Namespace:
-                parseNamespace();
-                break;
-            case Keyword::Entrypoint:
-                if(!moveNext().isOperator(Operator::BraceOpen)) logError("'{' expected!");
-                parseFunctionBody({}, "main");
-                break;
-            }
-        }
+        while (token.ty != Token::End) parsePrimary();
     }
 
     String dump() {
@@ -108,6 +86,33 @@ public:
     }
 
 private:
+
+    void parsePrimary() {
+        STD vector<Keyword> modifiers;
+
+        Keyword kw;
+        while (1) { // parse modifiers
+            if (token.ty != Token::Keyword) break;
+            kw = *token.getData<Keyword>();
+            if (!kw.isModifier()) break;
+            addModifier(kw, modifiers);
+            moveNext();
+        }
+        if (token.ty != Token::Keyword) logError("Keyword expected!");
+        switch (kw.ty) {
+        case Keyword::Class:
+            parseClass(modifiers);
+            break;
+        case Keyword::Namespace:
+            parseNamespace();
+            break;
+        case Keyword::Entrypoint:
+            if (!moveNext().isOperator(Operator::BraceOpen)) logError("'{' expected!");
+            parseFunctionBody({}, {});
+            break;
+
+        }
+    }
 
     Token moveNext() {
         return token = lexer->GetNextToken();
@@ -151,9 +156,10 @@ private:
                 STD vector<Member*> members;
                 while (1) {
                     if (token.isOperator(Operator::BraceClose)) break; //end of the body
-                    members.push_back(parseMember());
+                    members.push_back(parseMember(node->data));
                 }
                 node->data->createDefinition(super_ty, members);
+                moveNext();
                 return;
             }
             logError("Missing class opening bracket");
@@ -163,16 +169,20 @@ private:
 
     //current token ::= namespace
     void parseNamespace() {
-        // token = lexer->GetNextToken();
-        // if (token.ty == Token::Identifier) {
-        //     currentLocation.push_back(*token.getData<String>());
-        //     token = lexer->GetNextToken();
-        //     if (!(token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen)) {
-        //         logError("Missing namespace opening bracket");
-        //     }
-        // } else {
-        //     logError("Namespace definition error");
-        // }
+        moveNext();
+        if (token.ty == Token::Identifier) {
+            currentLocation += *token.getData<String>();
+            moveNext();
+            if (!token.isOperator(Operator::BraceOpen)) {
+                logError("Missing namespace opening bracket");
+            }
+            moveNext();
+            while (token.isOperator(Operator::BraceClose)) parsePrimary();
+            moveNext();
+            return;
+        } else {
+            logError("Identifier expected!");
+        }
     }
 
     Member* parseMember(Type* class_ty) {
@@ -200,7 +210,7 @@ private:
                         return parseFunction(modifiers, name, class_ty);
                     }
                     if (token.getData<Operator>()->ty == Operator::BraceOpen) {
-                        return parseProperty();
+                        return parseProperty(class_ty);
                     }
                 }
 
@@ -232,20 +242,21 @@ private:
         Type* t;
         STD vector<Variable*> args = {};
         while (1) {
-            if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BracketClose)
+            if (token.isOperator(Operator::BracketClose))
                 break;
             args.push_back(parseParam());
         }
-        parseFunctionBody(mods);
+        moveNext();
+        parseFunctionBody(mods, currentLocation + class_ty);
         return new Function(name, class_ty, t, args);
     }
 
     //current token ::= '{'
     void parseFunctionBody(Mods mods, Location context) {
-
+        // TODO: place all tokens to the buffer and send it to metadata
     }
 
-    Property* parseProperty() {
+    Property* parseProperty(Type* class_ty) {
         moveNext();
         Keyword kw, kw_vis;
         Mods modifiers = {};
@@ -259,8 +270,8 @@ private:
                 } else {
 
                 }
-            } else if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
-                parseFunctionBody(modifiers, kw.toString());
+            } else if (token.ty == Token::Operator && token.isOperator(Operator::BraceOpen)) {
+                parseFunctionBody(modifiers, currentLocation + class_ty);
             } else if (token.ty == Token::Keyword && (kw_vis = *token.getData<Keyword>()).isVisiblityModifier()) {
                 addModifier(kw_vis, modifiers);
             } else {

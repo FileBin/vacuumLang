@@ -155,6 +155,7 @@ public:
     }
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
+        if(super_ty->isProto) logError("Type " + super_ty->toString() + " is not defined!");
         super_type = super_ty;
         members = _members;
         isProto = false;
@@ -215,7 +216,7 @@ protected:
     Type* t;
 public:
     Variable(Type* type, String name) : name(name), t(type) {}
-}
+};
 
 struct Field : public Member {
 public:
