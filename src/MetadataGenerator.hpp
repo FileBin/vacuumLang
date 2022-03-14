@@ -202,13 +202,35 @@ private:
     }
     //current token '('
     void parseFunction(Mods mods, String name) {
-        if(token.ty != Token::Operator && token.getData<Operator>()->ty != Operator::BraceOpen) 
-            logError("'(' expected!");
-        
+
+    }
+    //current token '{'
+    void parseFunctionBody(Mods mods, String name) {
+
     }
 
     void parseProperty() {
-
+        moveNext();
+        Keyword kw, kw_vis;
+        Mods modifiers = {};
+        if (token.ty == Token::Keyword && (kw = *token.getData<Keyword>()).ty == Keyword::Get 
+        || kw.ty == Keyword::Get
+        || kw.ty == Keyword::Set) {
+            moveNext();
+            if (token.ty == Token::CmdEnd){
+                if (kw.ty == Keyword::Set){
+                    // TODO add empty funtion parsing
+                } else {
+                    
+                }
+            } else if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
+                parseFunctionBody(modifiers, kw.toString());
+            } else if (token.ty == Token::Keyword && (kw_vis = *token.getData<Keyword>()).isVisiblityModifier()){
+                addModifier(kw_vis, modifiers);
+            } else {
+                logError("Invalid token: " + token.toString());
+            }
+        }
     }
 };
 
