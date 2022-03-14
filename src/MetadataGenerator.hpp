@@ -142,7 +142,6 @@ private:
             moveNext();
             if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceOpen) {
                 metadata.ClassTree.root->addChild(Type::createPrototype(&metadata, className, currentNamespaces));
-                Mods modifiers = {};
                 while (1) {
                     if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceClose) break;
                     parseMember();
@@ -158,6 +157,7 @@ private:
 
     }
     void parseMember() {
+        Mods modifiers = {};
         if (token.ty == Token::Keyword) {
             Keyword kw = *token.getData<Keyword>();
             if (kw.isModifier()) {
@@ -166,7 +166,7 @@ private:
                 logError("Unknown keyword " + kw.toString() + "!");
             }
             moveNext();
-            continue;
+            return;
         }
         if (token.ty == Token::Identifier) {
             Type::createPrototype(&metadata, *token.getData<String>(), currentNamespaces);
@@ -180,16 +180,16 @@ private:
                     //Function
                     if (token.getData<Operator>()->ty == Operator::BracketOpen) {
                         parseFunction(modifiers, name);
-                        continue;
+                        return;
                     }
                     if (token.getData<Operator>()->ty == Operator::BraceOpen) {
                         parseProperty();
-                        continue;
+                        return;
                     }
                 }
                 if (token.ty == Token::CmdEnd) {
                     parseField();
-                    continue;
+                    return;
                 }
 
                 logError("Unknown operator");
