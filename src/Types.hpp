@@ -174,7 +174,7 @@ public:
         logError("Fuck yoy leatherman");
         return "";
     }
-    static Type* getInstance(Metadata* pmeta, String str);
+    static Type* getInstance(Metadata* pmeta, String name, STD vector<String> location = {});
     static Type* getInstance(Metadata* pmeta, Enum en);
     static Type* createInstance(Metadata* pmeta, Enum en);
     static Type* createType(Metadata* pmeta, String name, STD vector<String> loc = {}, STD vector<PMember> members = {});
@@ -193,7 +193,7 @@ public:
         Property,
         Function,
     };
-    bool isStatic, isRef, isVirtual, isAbstract;
+    bool isStatic, isVirtual, isAbstract;
 protected:
     Enum mem_ty;
     PType ty, class_ty;
@@ -234,9 +234,9 @@ struct Function : public Member {
 private:
     String name;
 
-    STD vector<Type*> parameters;
+    STD vector<::Field*> parameters;
 public:
-    Function(String name, PType class_type, PType ret_type, STD vector<PType> args = {})
+    Function(String name, PType class_type, PType ret_type, STD vector<::Field*> args = {})
         : Member(name, ret_type, class_type, Member::Function) {
         parameters = args;
     }
@@ -293,6 +293,13 @@ Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
     return getInstance(pmeta, getName(ty));
 }
 
-Type* Type::getInstance(Metadata* pmeta, String str) {
-    return pmeta->ClassTree.find<String>(str)->data;
+Type* Type::getInstance(Metadata* pmeta, String str, STD vector<String> location) {
+    String fullName = str;
+    for(String &s : location) {
+        fullName = s + "." + fullName;
+    }
+    auto ptr = pmeta->ClassTree.find<String>(fullName)->data;
+    if(ptr == nullptr)
+        ptr = createPrototype(pmeta, str, location);
+    return ptr;
 }
