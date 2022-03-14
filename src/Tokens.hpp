@@ -1,6 +1,9 @@
 #pragma once
 #include "stdafx.hpp"
 
+class Keyword;
+class Operator; 
+
 struct Token : IPrintable {
     enum Enum {
         Unknown = 0x7fffffff,
@@ -27,6 +30,9 @@ struct Token : IPrintable {
     Token(const Token &other) {
         copy(other);
     }
+
+    bool isKeyword(::Keyword k);
+    bool isOperator(::Operator op);
 
     ::String toString(){
         static constexpr auto buf_size = 0x400*sizeof(wchar_t);
@@ -114,3 +120,18 @@ private:
         }
     }
 };
+
+#include "Keyword.hpp"
+#include "Operators.hpp"
+
+bool Token::isKeyword(::Keyword kw) {
+    if(ty == Keyword)
+        return getData<::Keyword>()->ty == kw.ty;
+    return false;
+}
+
+bool Token::isOperator(::Operator op) {
+    if(ty == Operator)
+        return getData<::Operator>()->ty == op.ty;
+    return false;
+}

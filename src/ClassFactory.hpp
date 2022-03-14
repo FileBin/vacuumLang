@@ -8,9 +8,9 @@ namespace Objects {
     class ClassFactory : public Type {
     protected:
         String name;
-        ClassFactory(Metadata* pmeta, Type* super_type, STD vector<String> location, String name, STD vector<PMember> pmembers);
+        ClassFactory(Metadata* pmeta, Type* super_type, Location location, String name, STD vector<PMember> pmembers);
     public:
-        static Type* createProto(Metadata* pmeta, STD vector<String> location, String name) {
+        static Type* createProto(Metadata* pmeta, Location location, String name) {
             auto proto = new ClassFactory(pmeta, nullptr, location, name, {});
             proto->isProto = true;
             return proto;
@@ -21,7 +21,7 @@ namespace Objects {
         int getClassSize() override;
     };
 
-    ClassFactory::ClassFactory(Metadata* pmeta, Type* super_ty, STD vector<String> loc, String str, STD vector<PMember> pmembers)
+    ClassFactory::ClassFactory(Metadata* pmeta, Type* super_ty, Location loc, String str, STD vector<PMember> pmembers)
         : Type(pmeta, Type::Class) {
         location = loc;
         members = pmembers;

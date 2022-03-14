@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stdafx.hpp"
+#include "Location.hpp"
 struct Member;
 struct Metadata;
 
@@ -30,7 +31,7 @@ class Type : public IPrintable {
 public:
     typedef Member* PMember;
     enum Enum {
-        Ref = -3,
+        Pointer = -3,
         Class = -2,
         Unknown = -1,
 
@@ -63,7 +64,7 @@ protected:
     STD vector<Type*> interfaces;
     Enum type = Unknown;
 
-    STD vector<String> location;
+    Location location;
     STD vector<PMember> members;
 
     bool isProto = false;
@@ -87,13 +88,17 @@ public:
         isProto = other.isProto;
     }
 
+    bool hasDefinition() {
+        return !isProto;
+    }
+
     Metadata* getMeta() {
         return pmeta;
     }
 
     int getByteSize() {
         if(type == Type::Class) return 0;
-        if (isProto) logError(String("Type ") + getName() + String(" is not defined!"));
+        if (isProto) logError("Type " + getName() + " is not defined!");
         switch (type) {
         case Object:
         case Void:
@@ -119,13 +124,13 @@ public:
         case Dbl:
             return 8; //64bit
 
-        case Ref:
-            return 12; //8(pointer) + 4(memory allocation size)
+        case Pointer:
+            return 8; //64-bit pointer
 
         case Class:
             return getClassSize();
         default:
-            return -1;
+            logError("Can't calculate class size!");
         }
     }
 
@@ -134,7 +139,7 @@ public:
     String toString() override {
         char_t buf[0x400] = { 0 };
 
-        SPRINT(buf, ARRSIZE(buf), SPREF"{ type: %ls, byteSize: %d }", getFullName().c_str(), getByteSize());
+        SPRINT(buf, ARRSIZE(buf), SPREF "{ type: " STRPARAM ", byteSize: %d }", getFullName().c_str(), getByteSize());
 
         return buf;
     }
@@ -142,24 +147,11 @@ public:
     virtual String getName() = 0;
 
     String getFullName() {
-        String full_name = L"";
-        for (const auto& name : location) {
-            full_name += name + L".";
-        }
-        full_name += getName();
-        return full_name;
+        return location.getName() + getName();
     }
 
     String getLlvmName() {
-        String llvm_name = L"";
-        if (!location.empty()) {
-            llvm_name = L"nsp_";
-            for (const auto& name : location) {
-                llvm_name += name + L"_";
-            }
-        }
-        llvm_name += L"typ_" + getName();
-        return llvm_name;
+        return location.getLlvmName() + "typ_" + getName();
     }
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
@@ -174,14 +166,11 @@ public:
         logError("Fuck yoy leatherman");
         return "";
     }
-    static Type* getInstance(Metadata* pmeta, String name, STD vector<String> location = {});
+    static Type* getInstance(Metadata* pmeta, String name, Location location = {});
     static Type* getInstance(Metadata* pmeta, Enum en);
-    static Type* createInstance(Metadata* pmeta, Enum en);
-    static Type* createType(Metadata* pmeta, String name, STD vector<String> loc = {}, STD vector<PMember> members = {});
-    static Type* createType(Metadata* pmeta, Type* super_ty, String name, STD vector<String> loc = {}, STD vector<PMember> members = {});
-    static Type* createPrototype(Metadata* pmeta, String name, STD vector<String> loc = {});
+    static Type* createPrototype(Metadata* pmeta, String name, Location loc = {});
 
-    PMember getMember(String str);
+    PMember getMember(String name);
 };
 
 struct Member {
@@ -220,6 +209,14 @@ public:
     virtual String getLlvmName() = 0;
 };
 
+struct Variable {
+protected:
+    String name;
+    Type* t;
+public:
+    Variable(Type* type, String name) : name(name), t(type) {}
+}
+
 struct Field : public Member {
 public:
     Field(String name, PType class_type, PType type)
@@ -234,9 +231,9 @@ struct Function : public Member {
 private:
     String name;
 
-    STD vector<::Field*> parameters;
+    STD vector<Variable*> parameters;
 public:
-    Function(String name, PType class_type, PType ret_type, STD vector<::Field*> args = {})
+    Function(String name, PType class_type, PType ret_type, STD vector<Variable*> args = {})
         : Member(name, ret_type, class_type, Member::Function) {
         parameters = args;
     }
@@ -254,7 +251,8 @@ public:
     Property(String name, PType class_type, PType type, bool need_variable = false)
         : Member(name, type, class_type, Member::Property),
         f_get(name + "_get", class_type, type),
-        f_set(name + "_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void), { type }) {
+        f_set(name + "_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void),
+        { new Variable(type, "v") }) {
             if(need_variable){
                 variable = new ::Field(name + "_var", class_type, type);
             }
@@ -268,9 +266,9 @@ public:
 };
 
 typedef ::Type ty;
-ty::PMember ty::getMember(String str) {
+ty::PMember ty::getMember(String name) {
     for (::Type::PMember& mem : members) {
-        if (mem->getName() == str) {
+        if (mem->getName() == name) {
             return mem;
         }
     }
@@ -285,9 +283,9 @@ bool operator==(::Type& a, String b) {
     return a.getFullName() == b;
 }
 
-#include "Objects.hpp"
+#include "ClassFactory.hpp"
 
-Type* Type::createPrototype(Metadata* m, String name, STD vector<String> loc) {
+Type* Type::createPrototype(Metadata* m, String name, Location loc) {
     return Objects::ClassFactory::createProto(m, loc, name);
 }
 
@@ -297,13 +295,9 @@ Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
     return getInstance(pmeta, getName(ty));
 }
 
-Type* Type::getInstance(Metadata* pmeta, String str, STD vector<String> location) {
-    String fullName = str;
-    for(String &s : location) {
-        fullName = s + "." + fullName;
-    }
-    auto ptr = pmeta->ClassTree.find<String>(fullName)->data;
+Type* Type::getInstance(Metadata* pmeta, String name, Location location) {
+    auto ptr = pmeta->ClassTree.find<String>(location.getName() + name)->data;
     if(ptr == nullptr)
-        ptr = createPrototype(pmeta, str, location);
+        ptr = createPrototype(pmeta, name, location);
     return ptr;
 }
