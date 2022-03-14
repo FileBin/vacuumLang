@@ -145,43 +145,7 @@ private:
                 Mods modifiers = {};
                 while (1) {
                     if (token.ty == Token::Operator && token.getData<Operator>()->ty == Operator::BraceClose) break;
-                    if (token.ty == Token::Keyword) {
-                        Keyword kw = *token.getData<Keyword>();
-                        if (kw.isModifier()) {
-                            addModifier(kw, modifiers);
-                        } else {
-                            logError("Unknown keyword " + kw.toString() + "!");
-                        }
-                        moveNext();
-                        continue;
-                    }
-                    if (token.ty == Token::Identifier) {
-                        Type::createPrototype(&metadata, *token.getData<String>(), currentNamespaces);
-                        moveNext();
-                        String name;
-                        if (token.ty == Token::Identifier) {
-                            name = *token.getData<String>();
-                            moveNext();
-                            //Function
-                            if (token.ty == Token::Operator) {
-                                //Function
-                                if (token.getData<Operator>()->ty == Operator::BracketOpen) {
-                                    parseFunction(modifiers, name);
-                                    continue;
-                                }
-                                if (token.getData<Operator>()->ty == Operator::BraceOpen) {
-                                    parseProperty();
-                                    continue;
-                                }
-                            }
-                            if (token.ty == Token::CmdEnd) {
-                                parseField();
-                                continue;
-                            }
-
-                            logError("Unknown operator");
-                        }
-                    }
+                    parseMember();
                 }
             } else {
                 logError("Missing class opening bracket");
@@ -194,7 +158,43 @@ private:
 
     }
     void parseMember() {
+        if (token.ty == Token::Keyword) {
+            Keyword kw = *token.getData<Keyword>();
+            if (kw.isModifier()) {
+                addModifier(kw, modifiers);
+            } else {
+                logError("Unknown keyword " + kw.toString() + "!");
+            }
+            moveNext();
+            continue;
+        }
+        if (token.ty == Token::Identifier) {
+            Type::createPrototype(&metadata, *token.getData<String>(), currentNamespaces);
+            moveNext();
+            String name;
+            if (token.ty == Token::Identifier) {
+                name = *token.getData<String>();
+                moveNext();
+                //Function
+                if (token.ty == Token::Operator) {
+                    //Function
+                    if (token.getData<Operator>()->ty == Operator::BracketOpen) {
+                        parseFunction(modifiers, name);
+                        continue;
+                    }
+                    if (token.getData<Operator>()->ty == Operator::BraceOpen) {
+                        parseProperty();
+                        continue;
+                    }
+                }
+                if (token.ty == Token::CmdEnd) {
+                    parseField();
+                    continue;
+                }
 
+                logError("Unknown operator");
+            }
+        }
     }
 
     void parseField() {
@@ -202,6 +202,7 @@ private:
     }
     //current token '('
     void parseFunction(Mods mods, String name) {
+        if(token.ty != Token::Operator && token.)
     }
 
     void parseProperty() {
