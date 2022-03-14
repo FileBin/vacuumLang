@@ -1,8 +1,7 @@
 #include <fstream>
 #include <locale>
 #include <codecvt>
-#include "MetadataGenerator.hpp"
-#include "Lexer.hpp"
+#include "CompilerModule.hpp"
 #include "ConsoleApplication.hpp"
 
 //===----------------------------------------------------------------------===//
@@ -17,13 +16,13 @@ void programme(ConsoleApplication& app) {
     setlocale(LC_ALL, "");
     STD shared_ptr<Lexer<>> lexer = STD make_shared<Lexer<>>(file);
 
-    MetadataGenerator metaGen(lexer);
+    CompilerModule metaGen(lexer);
     metaGen.generateMetadata();
 
     app.Log(L"metadata dump:\n" + metaGen.dump() + "\n");
-    //Token token;
-    //while((token = lexer->GetNextToken()).ty != Token::End)
-    //    wprintf(L"Read token %ls\n", token.ToString().c_str());
+    Token token;
+    while((token = lexer->GetNextToken()).ty != Token::End)
+        wprintf(L"Read token %ls\n", token.toString().c_str());
 }
 
 int main(int argc, char const* argv[]) {

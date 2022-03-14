@@ -4,7 +4,7 @@
 #include "Operators.hpp"
 #include "Keyword.hpp"
 #include "Types.hpp"
-
+#include "Metadata.hpp"
 class Parser;
 
 //===----------------------------------------------------------------------===//
@@ -14,7 +14,7 @@ class Parser;
 namespace AST {
     using ::Parser;
     interface IASTNode {
-        virtual llvm::Value* GenCode() = 0;
+        virtual llvm::Value* codeGen(Metadata* pmeta) = 0;
     };
     /// ExprAST - Base class for all expression nodes.
     class ExprAST : public IASTNode {
@@ -34,13 +34,12 @@ namespace AST {
         NumberExprAST(Parser* parser, String str) : ExprAST(parser), str(str) {
             ty = Type::Num;
 
-            if (str.find('e') || str.find('.'))
-            {
+            if (str.find('e') || str.find('.')) {
                 ty = Type::Dbl;
             }
         }
 
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     /// VariableExprAST - Expression class for referencing a variable, like "a".
@@ -51,7 +50,7 @@ namespace AST {
     public:
         VariableExpression(Parser* parser, String name, Type* type) : ExprAST(parser), name(name), type(type) {}
 
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     class ClassExpression : public ExprAST {
@@ -63,7 +62,7 @@ namespace AST {
         ClassExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
             : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
 
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     class InterfaceExpression : public ExprAST {
@@ -75,7 +74,7 @@ namespace AST {
         InterfaceExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
             : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
 
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     /// BinaryExprAST - Expression class for a binary operator.
@@ -89,7 +88,7 @@ namespace AST {
             STD unique_ptr<ExprAST> RHS)
             : ExprAST(parser), Op(Op), LHS(STD move(LHS)), RHS(STD move(RHS)) {}
 
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     /// CallExprAST - Expression class for function calls.
@@ -102,7 +101,7 @@ namespace AST {
         CallExprAST(Parser* parser, const String& Callee,
             STD vector<STD unique_ptr<ExprAST>> Args)
             : ExprAST(parser), Callee(Callee), Args(STD move(Args)) {}
-        llvm::Value* GenCode() override;
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     /// PrototypeAST - This class represents the "prototype" for a function,
@@ -111,15 +110,15 @@ namespace AST {
     class PrototypeAST : IASTNode
     {
         STD shared_ptr<Parser> parser;
-        String Name;
-        STD vector<String> Args;
+        String name;
+        STD vector<::Variable> args;
 
     public:
-        PrototypeAST(Parser* parser, const String& Name, STD vector<String> Args)
-            : parser(parser), Name(Name), Args(STD move(Args)) {}
+        PrototypeAST(Parser* parser, const String& name, STD vector<::Variable> args)
+            : parser(parser), name(name), args(STD move(args)) {}
 
-        llvm::Function* GenCode();
-        const String& getName() const { return Name; }
+        llvm::Function* codeGen(Metadata* pmeta) override;
+        const String& getName() const { return name; }
     };
 
     /// FunctionAST - This class represents a function definition itself.
@@ -131,10 +130,10 @@ namespace AST {
 
     public:
         FunctionAST(Parser* parser, STD unique_ptr<PrototypeAST> Proto,
-            STD unique_ptr<ExprAST> Body)
+            TokenBufferStream body)
             : parser(parser), Proto(STD move(Proto)), Body(STD move(Body)) {}
 
-        llvm::Function* GenCode();
+        llvm::Function* codeGen(Metadata* pmeta) override;
     };
 }
 
@@ -145,22 +144,24 @@ namespace AST {
 // Code Generation
 //===----------------------------------------------------------------------===//
 namespace AST {
-    llvm::Value* NumberExprAST::GenCode() {
+    llvm::Value* NumberExprAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         auto s = ToStdString(str);
         switch (ty)
         {
         case ::Type::Num:
-            return ConstantInt::get(*parser->TheContext, APSInt(s));
+            return ConstantInt::get(*parser->TheContext,
+                APInt(8 * ::Type::getInstance(pmeta, ::Type::Num)->getByteSize(), s, 10));
         case ::Type::Dbl:
             return llvm::ConstantFP::get(*parser->TheContext, APFloat(APFloat::IEEEdouble(), s));
 
         default:
             logError("Unknown number type");
+            return 0;
         }
     }
 
-    llvm::Value* VariableExpression::GenCode()
+    llvm::Value* VariableExpression::codeGen(Metadata* pmeta)
     {
         // Look this variable up in the function.
         llvm::Value* V = parser->NamedValues[name];
@@ -169,10 +170,10 @@ namespace AST {
         return V;
     }
 
-    llvm::Value* BinaryExprAST::GenCode()
+    llvm::Value* BinaryExprAST::codeGen(Metadata* pmeta)
     {
-        llvm::Value* L = LHS->GenCode();
-        llvm::Value* R = RHS->GenCode();
+        llvm::Value* L = LHS->codeGen(pmeta);
+        llvm::Value* R = RHS->codeGen(pmeta);
         if (!L || !R)
             return nullptr;
 
@@ -190,10 +191,11 @@ namespace AST {
             return parser->Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*parser->TheContext), "booltmp");
         default:
             logError("invalid binary operator");
+            return 0;
         }
     }
 
-    llvm::Value* CallExprAST::GenCode()
+    llvm::Value* CallExprAST::codeGen(Metadata* pmeta)
     {
         // Look up the name in the global module table.
         llvm::Function* CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
@@ -207,7 +209,7 @@ namespace AST {
         std::vector<llvm::Value*> ArgsV;
         for (unsigned i = 0, e = Args.size(); i != e; ++i)
         {
-            ArgsV.push_back(Args[i]->GenCode());
+            ArgsV.push_back(Args[i]->codeGen(pmeta));
             if (!ArgsV.back())
                 return nullptr;
         }
@@ -215,34 +217,34 @@ namespace AST {
         return parser->Builder->CreateCall(CalleeF, ArgsV, "calltmp");
     }
 
-    llvm::Function* PrototypeAST::GenCode()
+    llvm::Function* PrototypeAST::codeGen(Metadata* pmeta)
     {
         using namespace llvm;
         using llvm::Type;
         using llvm::Function;
         // Make the function type:  double(double,double) etc.
-        std::vector<Type*> Doubles(Args.size(), Type::getDoubleTy(*parser->TheContext));
+        std::vector<Type*> Doubles(args.size(), Type::getDoubleTy(*parser->TheContext));
         FunctionType* FT =
             FunctionType::get(Type::getDoubleTy(*parser->TheContext), Doubles, false);
 
         Function* F =
-            Function::Create(FT, Function::ExternalLinkage, ToStdString(Name), parser->TheModule.get());
+            Function::Create(FT, Function::ExternalLinkage, ToStdString(name), parser->TheModule.get());
 
         // Set names for all arguments.
-        unsigned Idx = 0;
-        for (auto& Arg : F->args())
-            Arg.setName(ToStdString(Args[Idx++]));
-
+        unsigned idx = 0;
+        for (auto& arg : F->args()) {
+            arg.setName(ToStdString(args[idx++].getName()));
+        }
         return F;
     }
 
-    llvm::Function* FunctionAST::GenCode() {
+    llvm::Function* FunctionAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         // First, check for an existing function from a previous 'extern' declaration.
         llvm::Function* TheFunction = parser->TheModule->getFunction(ToStdString(Proto->getName()));
 
         if (!TheFunction)
-            TheFunction = Proto->GenCode();
+            TheFunction = Proto->codeGen(pmeta);
 
         if (!TheFunction)
             return nullptr;
@@ -256,7 +258,7 @@ namespace AST {
         for (auto& Arg : TheFunction->args())
             parser->NamedValues[Utf8ToWstring(std::string(Arg.getName()))] = &Arg;
 
-        if (llvm::Value* RetVal = Body->GenCode())
+        if (llvm::Value* RetVal = Body->codeGen(pmeta))
         {
             // Finish off the function.
             parser->Builder->CreateRet(RetVal);

@@ -17,6 +17,8 @@ public:
             case Namespace:
                 return "nsp_" + name;
             }
+            logError("Unknown location type");
+            return "";
         }
     };
 private:
@@ -58,8 +60,10 @@ public:
         return *this;
     }
 
-    Location& operator+=(Type* ty) {
-        data.push_back({ ty->getName(), Location::Node::Class });
+    Location& operator+=(Type* ty);
+
+    Location& operator--() {
+        data.pop_back();
         return *this;
     }
 };

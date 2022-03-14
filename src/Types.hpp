@@ -2,6 +2,7 @@
 
 #include "stdafx.hpp"
 #include "Location.hpp"
+
 struct Member;
 struct Metadata;
 
@@ -132,6 +133,7 @@ public:
         default:
             logError("Can't calculate class size!");
         }
+        return -1;
     }
 
     Enum getEnum() { return type; }
@@ -155,7 +157,7 @@ public:
     }
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
-        if(super_ty->isProto) logError("Type " + super_ty->toString() + " is not defined!");
+        //if(super_ty->isProto) logError("Type " + super_ty->toString() + " is not defined!");
         super_type = super_ty;
         members = _members;
         isProto = false;
@@ -216,6 +218,14 @@ protected:
     Type* t;
 public:
     Variable(Type* type, String name) : name(name), t(type) {}
+
+    String getName() {
+        return name;
+    }
+
+    Type* getType() {
+        return t;
+    }
 };
 
 struct Field : public Member {
@@ -231,12 +241,20 @@ public:
 struct Function : public Member {
 private:
     String name;
-
+    TokenBufferStream body;
     STD vector<Variable*> parameters;
 public:
     Function(String name, PType class_type, PType ret_type, STD vector<Variable*> args = {})
         : Member(name, ret_type, class_type, Member::Function) {
         parameters = args;
+    }
+
+    void setBody(TokenBufferStream& stream) {
+        body = stream;
+    }
+
+    TokenBufferStream& getBody() {
+        return body;
     }
 
     String getLlvmName() override {
@@ -297,8 +315,13 @@ Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
 }
 
 Type* Type::getInstance(Metadata* pmeta, String name, Location location) {
-    auto ptr = pmeta->ClassTree.find<String>(location.getName() + name)->data;
+    auto ptr = pmeta->classTree.find<String>(location.getName() + name)->data;
     if(ptr == nullptr)
         ptr = createPrototype(pmeta, name, location);
     return ptr;
+}
+
+Location& Location::operator+=(Type* ty) {
+    data.push_back({ ty->getName(), Location::Node::Class });
+    return *this;
 }

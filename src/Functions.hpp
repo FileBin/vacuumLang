@@ -3,9 +3,9 @@
 #include <stdexcept>
 
 /// logError - This is little helper functions for error handling.
-void logError(String str) {
+void logError(String str) noexcept(false) {
     PRINT(SPREF "Error: " STRPARAM, str);
-    throw str;
+    throw str.c_str();
 }
 
 void logWarning(String str) {

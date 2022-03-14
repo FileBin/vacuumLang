@@ -95,7 +95,7 @@ public:
     }
 
     template<typename R>
-    PNode find(R data) {
+    PNode find(R data) noexcept {
         STD vector<PNode> l = { root }, buf;
         do {
             buf.clear();

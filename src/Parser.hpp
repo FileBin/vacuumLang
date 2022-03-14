@@ -3,10 +3,11 @@
 #include "Functions.hpp"
 #include "Lexer.hpp"
 #include "AST.hpp"
-#include "MetadataGenerator.hpp"
+#include "Metadata.hpp"
 
 //===----------------------------------------------------------------------===//
 // Parser
+// parses only inner function code
 //===----------------------------------------------------------------------===//
 class Parser
 {
@@ -15,6 +16,7 @@ protected:
 #define LOG_IDENTIFIER_EXPECTED logError("Identifier expected!")
 
     typedef STD unique_ptr<AST::IASTNode> node_t;
+    typedef STD unique_ptr<AST::ExprAST> expr_t;
 
     Token currentToken;
     std::stack<String> path;
@@ -28,82 +30,41 @@ public:
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
     std::map<String, llvm::Value*> NamedValues;
-    std::unique_ptr<Lexer<>> lexer;
+    TokenBufferStream* stream;
 
 public:
     Parser() {
         init();
     }
 
-    void ParseStream(std::istream& stream) {
-        lexer = STD make_unique<Lexer<>>(stream);
-        while (true) {
-            GetNextToken();
-            switch (currentToken.ty) {
-                break;
-            case Token::Keyword:
-                ParseKeyword();
-                break;
-            default:
-                logError("Amogusus expected!\n");
-                break;
-            }
-        }
+    node_t parse(TokenBufferStream& stream) {
+        //TODO make function parsing
     }
 
 protected:
     void init() {
         using namespace llvm;
         // Open a new context and module.
-        TheContext = std::make_unique<LLVMContext>();
-        TheModule = std::make_unique<Module>("main", *TheContext);
+        TheContext = STD make_unique<LLVMContext>();
+        TheModule = STD make_unique<Module>("main", *TheContext);
 
         // Create a new builder for the module.
-        Builder = std::make_unique<IRBuilder<>>(*TheContext);
+        Builder = STD make_unique<IRBuilder<>>(*TheContext);
     }
 
     Token GetNextToken() {
-        return currentToken = lexer->GetNextToken();
+        return currentToken = stream->moveNext();
     }
-
-    node_t ParseKeyword() {
-        if (currentToken.ty != Token::Keyword) logError("Fuck you leatherman!");
-        auto& kw = *currentToken.getData<Keyword>();
-        if (context == Context::Global) {
-            if (kw.isDefinition())
-                return ParseDefinitionKw(kw);
-        }
-    }
-
-#pragma region Keywords
-    node_t ParseDefinitionKw(Keyword kw) {
-        using namespace AST;
-        GetNextToken();
-        if (currentToken.ty != Token::Identifier) LOG_IDENTIFIER_EXPECTED;
-        String name = *currentToken.getData<String>();
-        switch (kw.ty) {
-        case Keyword::Class: break;
-
-        case Keyword::Interface: break;
-
-        case Keyword::Var: break;
-
-        default:
-            logError("Show me the boss of this gym!");
-            break;
-        }
-    }
-#pragma endregion
 
     /// numberexpr ::= number
-    node_t ParseNumberExpr() {
-        auto Result = std::make_unique<AST::NumberExprAST>(currentToken.getData<String>());
+    expr_t ParseNumberExpr() {
+        auto Result = std::make_unique<AST::NumberExprAST>(this, *currentToken.getData<String>());
         GetNextToken(); // consume the number
         return std::move(Result);
     }
 
     /// parenexpr ::= '(' expression ')'
-    node_t ParseParenExpr() {
+    expr_t ParseParenExpr() {
         if (currentToken.ty != Token::Operator || currentToken.getData<Operator>()->ty != Operator::BracketOpen)
             logError("'(' expected!");
         GetNextToken();
@@ -119,7 +80,7 @@ protected:
 
     /// binoprhs
     ///   ::= ('+' primary)*
-    node_t ParseBinOpRHS(int priority, node_t LHS) {
+    expr_t ParseBinOpRHS(int priority, expr_t LHS) {
         if (currentToken.ty != Token::Operator) logError("Operator expected!");
         Operator& op = *currentToken.getData<Operator>();
         if (!Operator::hasBinaryForm(op.ty)) logError("Binary operator expected!");
@@ -153,15 +114,15 @@ protected:
             }
 
             // Merge LHS/RHS.
-            LHS = std::make_unique<AST::BinaryExprAST>(BinOp, STD move(LHS), STD move(RHS));
+            LHS = std::make_unique<AST::BinaryExprAST>(this, ::Operator(BinOp), STD move(LHS), STD move(RHS));
         }
     }
 
-    node_t ParseReadExpr() {
+    expr_t ParseReadExpr() {
         //TODO: insert check code for variable, property, function
     }
 
-    node_t ParsePrimary() {
+    expr_t ParsePrimary() {
         switch (currentToken.ty) {
         default: logError("Unknown token when expecting an expression");
         case Token::Identifier: return ParseReadExpr();
@@ -173,7 +134,7 @@ protected:
     /// expression
     ///   ::= primary binoprhs
     ///
-    node_t ParseExpression() {
+    expr_t ParseExpression() {
         auto LHS = ParsePrimary();
         return ParseBinOpRHS(0, std::move(LHS));
     }

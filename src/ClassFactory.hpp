@@ -2,6 +2,7 @@
 #include "stdafx.hpp"
 #include "Functions.hpp"
 #include "Types.hpp"
+#include "Metadata.hpp"
 
 namespace Objects {
 
@@ -30,7 +31,7 @@ namespace Objects {
     }
 }
 
-#include "MetadataGenerator.hpp"
+#include "Metadata.hpp"
 
 int Objects::ClassFactory::getClassSize() {
     int size = 0;
