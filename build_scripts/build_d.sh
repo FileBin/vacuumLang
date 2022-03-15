@@ -4,4 +4,4 @@
 g++ -c -g ./src/main.cpp `llvm-config --cxxflags` -o ./obj/Linux/Debug/main.o -std=gnu++17 -fexceptions
 
 #link
-g++ -g ./obj/Linux/Debug/main.o -o ./bin/Linux/Debug/program  `llvm-config --ldflags --system-libs --libs core` -std=gnu++11
+g++ -g ./obj/Linux/Debug/main.o -o ./bin/Linux/Debug/program  `llvm-config --ldflags --system-libs --libs core` -std=gnu++17
