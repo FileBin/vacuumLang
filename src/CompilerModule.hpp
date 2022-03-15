@@ -1,9 +1,9 @@
 #pragma once
 #include "stdafx.hpp"
-#include "Functions.hpp"
 #include "TokenBufferStream.hpp"
-
-#include "AST.hpp"
+#include "Metadata.hpp"
+#include "Lexer.hpp"
+#include "ASTheader.h"
 
 class CompilerModule {
 public:
@@ -17,6 +17,10 @@ protected:
     pLexer lexer;
     Location currentLocation;
     STD vector<Location> imported = {};
+
+    std::unique_ptr<llvm::LLVMContext> TheContext;
+    std::unique_ptr<llvm::Module> TheModule;
+    std::unique_ptr<llvm::IRBuilder<>> Builder;
 public:
 
     CompilerModule(pLexer lexer) : lexer(lexer) {
@@ -28,12 +32,22 @@ public:
         while (token.ty != Token::End) parsePrimary();
     }
 
-    void codeGen() {
-        //TODO: llvm codegeneration! OwO
-    }
+    void codeGen();
 
     String dump() {
         return "ClassTree: " + metadata.classTree.toString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
+    }
+
+    llvm::IRBuilder<>& getBuilder() {
+        return *Builder.get();
+    }
+
+    llvm::Module& getModule() {
+        return *TheModule.get();
+    }
+
+    llvm::LLVMContext& getContext() {
+        return *TheContext.get();
     }
 
 private:
@@ -55,7 +69,7 @@ private:
             parseFunctionBody({}, {}); //parse entrypoint of program
             break;
         case Keyword::Import:
-            while(moveNext().ty != Token::CmdEnd);
+            while (moveNext().ty != Token::CmdEnd);
             moveNext();
             break;
         default:
@@ -160,7 +174,7 @@ private:
                         return parseFunction(modifiers, name, class_ty);
                     }
                     if (token.getData<Operator>()->ty == Operator::BraceOpen) {
-                        return parseProperty(modifiers, name ,class_ty);
+                        return parseProperty(modifiers, name, class_ty);
                     }
                 }
 
@@ -260,4 +274,10 @@ private:
         }
     }
 };
+
+#include "AST.hpp"
+
+void CompilerModule::codeGen() {
+    //TODO: llvm codegeneration! OwO
+}
 

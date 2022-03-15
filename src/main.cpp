@@ -26,6 +26,10 @@ void programme(ConsoleApplication& app) {
 }
 
 int main(int argc, char const* argv[]) {
-    ConsoleApplication app(argc, argv, programme);
+    try {
+        ConsoleApplication app(argc, argv, programme);
+    } catch(int i) {
+        return i;
+    }
     return 0;
 }

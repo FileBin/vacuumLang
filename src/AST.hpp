@@ -5,23 +5,38 @@
 #include "Keyword.hpp"
 #include "Types.hpp"
 #include "Metadata.hpp"
-class Parser;
+class CompilerModule;
+struct Enviroment;
 
 //===----------------------------------------------------------------------===//
 // Abstract Syntax Tree (aka Parse Tree)
 //===----------------------------------------------------------------------===//
 
 namespace AST {
-    using ::Parser;
     interface IASTNode {
         virtual llvm::Value* codeGen(Metadata* pmeta) = 0;
+    };
+
+    class ScopeAST : public IASTNode {
+    public:
+        STD shared_ptr<CompilerModule> module;
+        STD shared_ptr<Enviroment> env;
+        STD vector<STD unique_ptr<IASTNode>> children;
+        ScopeAST(CompilerModule* module, STD shared_ptr<Enviroment> env) : module(module), env(env) {}
+        void push(IASTNode* node) {
+            children.push_back(STD unique_ptr<IASTNode>(node));
+        }
+
+        llvm::Value* codeGen(Metadata* pmeta) override;
     };
     /// ExprAST - Base class for all expression nodes.
     class ExprAST : public IASTNode {
     public:
+        typedef STD shared_ptr<ScopeAST> Scope;
+        Scope scope;
         Type* type;
-        STD shared_ptr<Parser> parser;
-        ExprAST(Parser* parser, Type* type) : parser(parser), type(type) {}
+        STD shared_ptr<CompilerModule> module;
+        ExprAST(CompilerModule* module, Type* type, Scope scope) : module(module), type(type), scope(scope) {}
         virtual ~ExprAST() = default;
     };
 
@@ -29,9 +44,8 @@ namespace AST {
     class NumberExprAST : public ExprAST
     {
         String str;
-
     public:
-        NumberExprAST(Parser* parser, Type* type, String str) : ExprAST(parser, type), str(str) {}
+        NumberExprAST(CompilerModule* module, Scope scope, Type* type, String str) : ExprAST(module, type, scope), str(str) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -42,7 +56,7 @@ namespace AST {
         String name;
 
     public:
-        VariableExpression(Parser* parser, Type* type, String name) : ExprAST(parser, type), name(name), type(type) {}
+        VariableExpression(CompilerModule* module, Scope scope, Type* type, String name) : ExprAST(module, type, scope), name(name), type(type) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -54,9 +68,12 @@ namespace AST {
         STD unique_ptr<ExprAST> LHS, RHS;
 
     public:
-        BinaryExprAST(Parser* parser, Type* ty, Operator Op, STD unique_ptr<ExprAST> LHS,
+        BinaryExprAST(CompilerModule* module, Scope scope, Type* ty, Operator Op, STD unique_ptr<ExprAST> LHS,
             STD unique_ptr<ExprAST> RHS)
-            : ExprAST(parser, ty), Op(Op), LHS(STD move(LHS)), RHS(STD move(RHS)) {
+            : ExprAST(module, ty, scope), Op(Op),
+            LHS(STD move(LHS)),
+            RHS(STD move(RHS))
+        {
             if (!Type::isStd(ty))
                 logError("Not standart type (" + ty->toString() + ") occured whe generating division operator!");
             type = ty;
@@ -71,9 +88,9 @@ namespace AST {
         STD vector<STD unique_ptr<ExprAST>> Args;
 
     public:
-        CallExprAST(Parser* parser, Type* type, const String& Callee,
+        CallExprAST(CompilerModule* module, Type* type, Scope scope, const String& Callee,
             STD vector<STD unique_ptr<ExprAST>> Args)
-            : ExprAST(parser, type), Callee(Callee), Args(STD move(Args)) {}
+            : ExprAST(module, type, scope), Callee(Callee), Args(STD move(Args)) {}
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
@@ -82,13 +99,13 @@ namespace AST {
     /// of arguments the function takes).
     class PrototypeAST : IASTNode
     {
-        STD shared_ptr<Parser> parser;
+        STD shared_ptr<CompilerModule> module;
         String name;
         STD vector<::Variable> args;
 
     public:
-        PrototypeAST(Parser* parser, const String& name, STD vector<::Variable> args)
-            : parser(parser), name(name), args(STD move(args)) {}
+        PrototypeAST(CompilerModule* module, const String& name, STD vector<::Variable> args)
+            : module(module), name(name), args(STD move(args)) {}
 
         llvm::Function* codeGen(Metadata* pmeta) override;
         const String& getName() const { return name; }
@@ -97,20 +114,27 @@ namespace AST {
     /// FunctionAST - This class represents a function definition itself.
     class FunctionAST : IASTNode
     {
-        STD shared_ptr<Parser> parser;
+        STD shared_ptr<CompilerModule> module;
         STD unique_ptr<PrototypeAST> Proto;
-        STD unique_ptr<ExprAST> Body;
+        STD unique_ptr<ScopeAST> Body;
+        STD shared_ptr<Enviroment> env;
 
     public:
-        FunctionAST(Parser* parser, STD unique_ptr<PrototypeAST> Proto,
+        FunctionAST(CompilerModule* module,
+            STD unique_ptr<PrototypeAST> Proto,
+            STD shared_ptr<Enviroment> env,
             TokenBufferStream body)
-            : parser(parser), Proto(STD move(Proto)), Body(STD move(Body)) {}
+            : module(module),
+            Proto(STD move(Proto)),
+            env(env),
+            Body(STD move(Body)) {}
 
         llvm::Function* codeGen(Metadata* pmeta) override;
     };
 }
 
-#include "Parser.hpp"
+#include "CompilerModule.hpp"
+#include "Enviroment.hpp"
 
 
 //===----------------------------------------------------------------------===//
@@ -120,15 +144,13 @@ namespace AST {
     llvm::Value* NumberExprAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         auto s = ToStdString(str);
-
     }
 
-    llvm::Value* VariableExpression::codeGen(Metadata* pmeta)
-    {
+    llvm::Value* VariableExpression::codeGen(Metadata* pmeta) {
         // Look this variable up in the function.
-        llvm::Value* V = parser->NamedValues[name];
+        llvm::Value* V = scope->env->findVar(name, module.get());
         if (!V)
-            logError("Unknown variable name");
+            logError("Unknown variable \'" + name + "\'!");
         return V;
     }
 
@@ -141,8 +163,8 @@ namespace AST {
         if (!L || !R)
             return nullptr;
 
-        auto& b = parser->Builder;
-        auto& c = *parser->TheContext.get();
+        auto& b = module->getBuilder();
+        auto& c = module->getContext();
 
         switch (type->getStdType())
         {
@@ -150,25 +172,25 @@ namespace AST {
             switch (Op.ty)
             {
             case Operator::Add:
-                return b->CreateAdd(L, R, "iadd");
+                return b.CreateAdd(L, R, "iadd");
             case Operator::Sub:
-                return b->CreateSub(L, R, "isub");
+                return b.CreateSub(L, R, "isub");
             case Operator::Mul:
-                return b->CreateMul(L, R, "imul");
+                return b.CreateMul(L, R, "imul");
             case Operator::Div:
-                return b->CreateSDiv(L, R, "sdiv");
+                return b.CreateSDiv(L, R, "sdiv");
             case Operator::Mod: // l - (r*(l/r))
-                return b->CreateSub(L, b->CreateMul(R, b->CreateSDiv(L, R, "sdiv"), "imul"), "isub");
+                return b.CreateSub(L, b.CreateMul(R, b.CreateSDiv(L, R, "sdiv"), "imul"), "isub");
             case Operator::Less:
-                return b->CreateICmpSLT(L, R, "scmplt");
+                return b.CreateICmpSLT(L, R, "scmplt");
             case Operator::Greater:
-                return b->CreateICmpSGT(L, R, "scmpsgt");
+                return b.CreateICmpSGT(L, R, "scmpsgt");
             case Operator::LessEqual:
-                return b->CreateICmpSLE(L, R, "scmple");
+                return b.CreateICmpSLE(L, R, "scmple");
             case Operator::GreaterEqual:
-                return b->CreateICmpSGE(L, R, "scmpge");
+                return b.CreateICmpSGE(L, R, "scmpge");
             case Operator::Equal:
-                return b->CreateICmpEQ(L, R, "icmpeq");
+                return b.CreateICmpEQ(L, R, "icmpeq");
             default:
                 logError("Invalid binary operator!");
                 return 0;
@@ -177,25 +199,25 @@ namespace AST {
             switch (Op.ty)
             {
             case Operator::Add:
-                return b->CreateAdd(L, R, "iadd");
+                return b.CreateAdd(L, R, "iadd");
             case Operator::Sub:
-                return b->CreateSub(L, R, "isub");
+                return b.CreateSub(L, R, "isub");
             case Operator::Mul:
-                return b->CreateMul(L, R, "imul");
+                return b.CreateMul(L, R, "imul");
             case Operator::Div:
-                return b->CreateUDiv(L, R, "udiv");
+                return b.CreateUDiv(L, R, "udiv");
             case Operator::Mod: // l - (r*(l/r))
-                return b->CreateSub(L, b->CreateMul(R, b->CreateUDiv(L, R, "udiv"), "imul"), "isub");
+                return b.CreateSub(L, b.CreateMul(R, b.CreateUDiv(L, R, "udiv"), "imul"), "isub");
             case Operator::Less:
-                return b->CreateICmpSLT(L, R, "scmplt");
+                return b.CreateICmpSLT(L, R, "scmplt");
             case Operator::Greater:
-                return b->CreateICmpSGT(L, R, "scmpsgt");
+                return b.CreateICmpSGT(L, R, "scmpsgt");
             case Operator::LessEqual:
-                return b->CreateICmpSLE(L, R, "scmple");
+                return b.CreateICmpSLE(L, R, "scmple");
             case Operator::GreaterEqual:
-                return b->CreateICmpSGE(L, R, "scmpge");
+                return b.CreateICmpSGE(L, R, "scmpge");
             case Operator::Equal:
-                return b->CreateICmpEQ(L, R, "icmpeq");
+                return b.CreateICmpEQ(L, R, "icmpeq");
             default:
                 logError("Invalid binary operator!");
                 return 0;
@@ -204,25 +226,25 @@ namespace AST {
             switch (Op.ty)
             {
             case Operator::Add:
-                return b->CreateFAdd(L, R, "fadd");
+                return b.CreateFAdd(L, R, "fadd");
             case Operator::Sub:
-                return b->CreateFSub(L, R, "fsub");
+                return b.CreateFSub(L, R, "fsub");
             case Operator::Mul:
-                return b->CreateFMul(L, R, "fmul");
+                return b.CreateFMul(L, R, "fmul");
             case Operator::Div:
-                return b->CreateFDiv(L, R, "fdiv");
+                return b.CreateFDiv(L, R, "fdiv");
             case Operator::Mod: //  trunc(l/r)*r
-                return b->CreateFPTrunc(b->CreateFDiv(L,R, "fdiv"), type->getLlvmType(c), "ftruncf");
+                return b.CreateFPTrunc(b.CreateFDiv(L, R, "fdiv"), type->getLlvmType(c), "ftruncf");
             case Operator::Less:
-                return b->CreateFCmpULT(L, R, "fcmplt");
+                return b.CreateFCmpULT(L, R, "fcmplt");
             case Operator::Greater:
-                return b->CreateFCmpUGT(L, R, "fcmpsgt");
+                return b.CreateFCmpUGT(L, R, "fcmpsgt");
             case Operator::LessEqual:
-                return b->CreateFCmpULE(L, R, "fcmple");
+                return b.CreateFCmpULE(L, R, "fcmple");
             case Operator::GreaterEqual:
-                return b->CreateFCmpUGE(L, R, "fcmpge");
+                return b.CreateFCmpUGE(L, R, "fcmpge");
             case Operator::Equal:
-                return b->CreateFCmpUEQ(L, R, "fcmpeq");
+                return b.CreateFCmpUEQ(L, R, "fcmpeq");
             default:
                 logError("Invalid binary operator!");
                 return 0;
@@ -236,7 +258,7 @@ namespace AST {
     llvm::Value* CallExprAST::codeGen(Metadata* pmeta)
     {
         // Look up the name in the global module table.
-        llvm::Function* CalleeF = parser->TheModule->getFunction(ToStdString(Callee));
+        llvm::Function* CalleeF = module->getModule().getFunction(ToStdString(Callee));
         if (!CalleeF)
             logError("Unknown function referenced");
 
@@ -252,7 +274,7 @@ namespace AST {
                 return nullptr;
         }
 
-        return parser->Builder->CreateCall(CalleeF, ArgsV, "calltmp");
+        return module->getBuilder().CreateCall(CalleeF, ArgsV, "calltmp");
     }
 
     llvm::Function* PrototypeAST::codeGen(Metadata* pmeta)
@@ -261,12 +283,12 @@ namespace AST {
         using llvm::Type;
         using llvm::Function;
         // Make the function type:  double(double,double) etc.
-        std::vector<Type*> Doubles(args.size(), Type::getDoubleTy(*parser->TheContext));
+        std::vector<Type*> Doubles(args.size(), Type::getDoubleTy(module->getContext()));
         FunctionType* FT =
-            FunctionType::get(Type::getDoubleTy(*parser->TheContext), Doubles, false);
+            FunctionType::get(Type::getDoubleTy(module->getContext()), Doubles, false);
 
         Function* F =
-            Function::Create(FT, Function::ExternalLinkage, ToStdString(name), parser->TheModule.get());
+            Function::Create(FT, Function::ExternalLinkage, ToStdString(name), module->getModule());
 
         // Set names for all arguments.
         unsigned idx = 0;
@@ -279,7 +301,7 @@ namespace AST {
     llvm::Function* FunctionAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         // First, check for an existing function from a previous 'extern' declaration.
-        llvm::Function* TheFunction = parser->TheModule->getFunction(ToStdString(Proto->getName()));
+        llvm::Function* TheFunction = module->getModule().getFunction(ToStdString(Proto->getName()));
 
         if (!TheFunction)
             TheFunction = Proto->codeGen(pmeta);
@@ -288,18 +310,17 @@ namespace AST {
             return nullptr;
 
         // Create a new basic block to start insertion into.
-        BasicBlock* BB = BasicBlock::Create(*parser->TheContext, "entry", TheFunction);
-        parser->Builder->SetInsertPoint(BB);
+        BasicBlock* BB = BasicBlock::Create(module->getContext(), "entry", TheFunction);
+        module->getBuilder().SetInsertPoint(BB);
 
         // Record the function arguments in the NamedValues map.
-        parser->NamedValues.clear();
         for (auto& Arg : TheFunction->args())
-            parser->NamedValues[Utf8ToWstring(std::string(Arg.getName()))] = &Arg;
+            env->addParam(Utf8ToWstring(std::string(Arg.getName())), &Arg);
 
         if (llvm::Value* RetVal = Body->codeGen(pmeta))
         {
             // Finish off the function.
-            parser->Builder->CreateRet(RetVal);
+            module->getBuilder().CreateRet(RetVal);
 
             // Validate the generated code, checking for consistency.
             llvm::verifyFunction(*TheFunction);

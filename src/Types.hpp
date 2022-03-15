@@ -76,10 +76,13 @@ protected:
     Location location;
     STD vector<PMember> members;
 
-    bool isProto = false;
+    bool is_proto = false;
+    bool is_static = false;
+    bool is_sealed = false;
+    bool is_abstract = false;
 
     virtual int getClassSize() = 0;
-    virtual llvm::Type* getClassLlvmType();
+    virtual llvm::Type* getClassLlvmType() = 0;
 public:
     Type(Metadata* pmeta, Enum type_enum = Unknown) : pmeta(pmeta) {
         interfaces = {};
@@ -95,12 +98,16 @@ public:
         type = other.type;
         location = other.location;
         members = other.members;
-        isProto = other.isProto;
+        is_proto = other.is_proto;
     }
 
     bool hasDefinition() {
-        return !isProto;
+        return !is_proto;
     }
+
+    bool isStatic() { return is_static; }
+    bool isAbstact() { return is_abstract; }
+    bool isSealed() { return is_sealed; }
 
     Metadata* getMeta() {
         return pmeta;
@@ -130,7 +137,7 @@ public:
 
     int getByteSize() {
         if (type == Type::Class) return 0;
-        if (isProto) logError("Type " + getName() + " is not defined!");
+        if (is_proto) logError("Type " + getName() + " is not defined!");
         switch (type) {
         case Object:
         case Void:
@@ -169,14 +176,6 @@ public:
 
     Enum getEnum() { return type; }
 
-    String toString() override {
-        char_t buf[0x400] = { 0 };
-
-        SPRINT(buf, ARRSIZE(buf), SPREF "{ type: " STRPARAM ", byteSize: %d }", getFullName().c_str(), getByteSize());
-
-        return buf;
-    }
-
     virtual String getName() = 0;
 
     String getFullName() {
@@ -188,10 +187,10 @@ public:
     }
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
-        //if(super_ty->isProto) logError("Type " + super_ty->toString() + " is not defined!");
+        //if(super_ty->is_proto) logError("Type " + super_ty->toString() + " is not defined!");
         super_type = super_ty;
         members = _members;
-        isProto = false;
+        is_proto = false;
     }
 
     llvm::Type* getLlvmType(llvm::LLVMContext& context) {
@@ -241,11 +240,31 @@ public:
         return "";
     }
 
+    void addModifier(Keyword kw) {
+        if (kw.isModifier()) logError("Unknown keyword");
+        if (!is_abstract) {
+            if (kw.ty == Keyword::Static) {
+                is_static = true;
+                return;
+            }
+        }
+    }
+
+    String toString() override {
+        char_t buf[0x400] = { 0 };
+
+        SPRINT(buf, ARRSIZE(buf), SPREF "{ type: " STRPARAM ", byteSize: %d }", getFullName().c_str(), getByteSize());
+
+        return buf;
+    }
+
     static Type* getInstance(Metadata* pmeta, String name, Location location = {});
     static Type* getInstance(Metadata* pmeta, Enum en);
     static Type* createPrototype(Metadata* pmeta, String name, Location loc = {});
 
     PMember getMember(String name);
+    int getMemberIndex(String name);
+    STD vector<PMember> getMembers() { return members; }
 };
 
 struct Member {
@@ -310,6 +329,8 @@ public:
     }
 };
 
+#include "TokenBufferStream.hpp"
+
 struct Function : public Member {
 private:
     String name;
@@ -358,12 +379,20 @@ public:
 
 typedef ::Type ty;
 ty::PMember ty::getMember(String name) {
-    for (::Type::PMember& mem : members) {
-        if (mem->getName() == name) {
-            return mem;
+    int idx;
+    if((idx = getMemberIndex(name)) >= 0)
+        return members[idx];
+    return nullptr;
+}
+
+int ty::getMemberIndex(String name) {
+    size_t n = members.size();
+    for (int i = 0;i < n;i++) {
+        if (members[i]->getName() == name) {
+            return i;
         }
     }
-    return nullptr;
+    return -1;
 }
 
 bool operator==(::Type& a, ::Type& b) {

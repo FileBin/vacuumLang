@@ -13,11 +13,12 @@ namespace Objects {
     public:
         static Type* createProto(Metadata* pmeta, Location location, String name) {
             auto proto = new ClassFactory(pmeta, nullptr, location, name, {});
-            proto->isProto = true;
+            proto->is_proto = true;
             return proto;
         }
 
         virtual String getName() override { return name; }
+        virtual llvm::Type* getClassLlvmType() override { return 0; }
 
         int getClassSize() override;
     };

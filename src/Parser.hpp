@@ -9,7 +9,7 @@
 // Parser
 // parses only inner function code
 //===----------------------------------------------------------------------===//
-class Parser
+class CodeParser
 {
 protected:
 
@@ -26,15 +26,12 @@ protected:
         Class, Function, Global
     } context;
 public:
-    std::unique_ptr<llvm::LLVMContext> TheContext;
-    std::unique_ptr<llvm::Module> TheModule;
-    std::unique_ptr<llvm::IRBuilder<>> Builder;
-    std::map<String, llvm::Value*> NamedValues;
+    std::map<String, llvm::Value*> enviromentVars;
     TokenBufferStream* stream;
     Metadata* pmeta;
 
 public:
-    Parser() {
+    CodeParser() {
         init();
     }
 
@@ -119,7 +116,7 @@ protected:
             }
 
             Type* ty;
-            //TODO: make some type merging
+            //TODO: make some type casting
             ty = LHS->type;
 
             // Merge LHS/RHS.
