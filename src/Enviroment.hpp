@@ -45,7 +45,7 @@ public:
 #include "CompilerModule.hpp"
 
 llvm::Value* Enviroment::findVar(String name, CompilerModule* module) {
-    for (auto i = localVarMap.size() - 1;i >= 0;i--) {
+    for (long i = localVarMap.size() - 1; i >= 0; i--) {
         try {
             return localVarMap[i].at(name);
         } catch (outofr) {
@@ -64,12 +64,12 @@ llvm::Value* Enviroment::findVar(String name, CompilerModule* module) {
             }
             if (self) {
                 using namespace llvm;
-                int idx = self_context->getMemberIndex(name);
+                int idx = self_context->getFieldIndex(name);
                 if (idx < 0) return nullptr;
                 auto& c = module->getContext();
                 auto& b = module->getBuilder();
                 auto type = self_context->getLlvmType(c);
-                return b.CreateLoad(type, b.CreateGEP(type, self, ConstantInt::get(c, APInt(32, idx)), "getelemptr"), "load");
+                return b.CreateLoad(type, b.CreateGEP(type, self, { ConstantInt::get(c, APInt(1, 0)), ConstantInt::get(c, APInt(32, idx)) }, "getelemptr"), "load");
             }
         }
     } catch (outofr) {}

@@ -18,7 +18,8 @@ namespace Objects {
         }
 
         virtual String getName() override { return name; }
-        virtual llvm::Type* getClassLlvmType() override { return 0; }
+
+        virtual llvm::Type* getClassLlvmType(llvm::LLVMContext& context) override;
 
         int getClassSize() override;
     };
@@ -48,4 +49,20 @@ int Objects::ClassFactory::getClassSize() {
         }
     }
     return size;
+}
+
+llvm::Type* Objects::ClassFactory::getClassLlvmType(llvm::LLVMContext& context) {
+    using namespace llvm;
+    using T = llvm::Type;
+    auto struct_ty = StructType::create(context, getLlvmName());
+    llvm_type = struct_ty; //avoid the bad recursion
+    STD vector<T*> fields;
+    for (auto mem : members) {
+        if (mem->mem_ty != Member::Field) continue;
+        auto t = mem->getType()->getLlvmType(context);
+        if(mem->isNativeP) t = PointerType::get(t, 0);
+        fields.push_back(t);
+    }
+    struct_ty->setBody(fields);
+    return struct_ty;
 }

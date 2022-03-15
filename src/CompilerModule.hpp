@@ -23,9 +23,7 @@ protected:
     std::unique_ptr<llvm::IRBuilder<>> Builder;
 public:
 
-    CompilerModule(pLexer lexer) : lexer(lexer) {
-
-    }
+    CompilerModule(pLexer lexer) : lexer(lexer) { init(); }
 
     void generateMetadata() {
         moveNext(); //init
@@ -52,6 +50,16 @@ public:
 
 private:
 
+    void init() {
+        using namespace llvm;
+        // Open a new context and module.
+        TheContext = STD make_unique<LLVMContext>();
+        TheModule = STD make_unique<Module>("main", *TheContext);
+
+        // Create a new builder for the module.
+        Builder = STD make_unique<IRBuilder<>>(*TheContext);
+    }
+
     void parsePrimary() {
         Keyword kw;
         auto modifiers = parseModifiers(); // get all modifiers
@@ -65,7 +73,7 @@ private:
             parseNamespace();
             break;
         case Keyword::Entrypoint:
-            if (!moveNext().isOperator(Operator::BraceOpen)) logError("'{' expected!");
+            if (moveNext().ty != Token::BraceOpen) logError("'{' expected!");
             parseFunctionBody({}, {}); //parse entrypoint of program
             break;
         case Keyword::Import:
@@ -106,7 +114,7 @@ private:
                 super_ty = nullptr;
 
             moveNext();
-            if (token.isOperator(Operator::BraceOpen)) { //begin of the body
+            if (token.ty == Token::BraceOpen) { //begin of the body
 
                 auto node = metadata.classTree.find(className);
                 if (node != nullptr) { // if has prototype
@@ -118,7 +126,7 @@ private:
                 }
                 STD vector<Member*> members;
                 while (1) {
-                    if (token.isOperator(Operator::BraceClose)) break; //end of the body
+                    if (token.ty == Token::BraceClose) break; //end of the body
                     members.push_back(parseMember(node->data));
                 }
                 node->data->createDefinition(super_ty, members);
@@ -136,11 +144,11 @@ private:
         if (token.ty == Token::Identifier) { //get name
             currentLocation += *token.getData<String>(); //place name to the location variable
             moveNext(); // skip name
-            if (!token.isOperator(Operator::BraceOpen)) {
+            if (token.ty != Token::BraceOpen) {
                 logError("Missing namespace opening bracket");
             }
             moveNext(); // skip '{'
-            while (token.isOperator(Operator::BraceClose))
+            while (token.ty == Token::BraceClose)
                 parsePrimary(); //parse like a normal way until the namespace ends
             --currentLocation; //pop the namespace from the location
             moveNext(); //skip '}'
@@ -170,12 +178,15 @@ private:
                 //Function
                 if (token.ty == Token::Operator) {
                     //Function
-                    if (token.getData<Operator>()->ty == Operator::BracketOpen) {
+                    auto op = token.getData<Operator>();
+                    if (op->ty == Operator::BracketOpen) {
                         return parseFunction(modifiers, name, class_ty);
                     }
-                    if (token.getData<Operator>()->ty == Operator::BraceOpen) {
-                        return parseProperty(modifiers, name, class_ty);
-                    }
+                    logError("Unexpected operator '" + op->toString() + "'!");
+                }
+
+                if (token.ty == Token::BraceOpen) {
+                    return parseProperty(modifiers, name, class_ty);
                 }
 
                 if (token.ty == Token::CmdEnd) {
@@ -221,6 +232,14 @@ private:
     void parseFunctionBody(Mods mods, Location context) {
         // TODO: place all tokens to the buffer and send it to metadata
         TokenBufferStream stream;
+        int level = 0;
+        while (1) {
+            stream.push(token);
+            if (token.ty == Token::BraceOpen) level++;
+            else if (token.ty == Token::BraceClose) level--;
+            moveNext();
+            if(level <= 0) return;
+        }
     }
 
     Property* parseProperty(Mods mods, String name, Type* class_ty) {
@@ -237,7 +256,7 @@ private:
                 } else {
 
                 }
-            } else if (token.ty == Token::Operator && token.isOperator(Operator::BraceOpen)) {
+            } else if (token.ty == Token::BraceOpen) {
                 parseFunctionBody(modifiers, currentLocation + class_ty);
             } else if (token.ty == Token::Keyword && (kw_vis = *token.getData<Keyword>()).isVisiblityModifier()) {
                 addModifier(kw_vis, modifiers);
@@ -245,6 +264,7 @@ private:
                 logError("Invalid token: " + token.toString());
             }
         }
+        //TODO make propety parsing
     }
 
     //token ::= type Identifier

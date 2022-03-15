@@ -40,6 +40,8 @@ namespace AST {
         virtual ~ExprAST() = default;
     };
 
+    // TODO add cast node
+
     /// NumberExprAST - Expression class for numeric literals like "1.0".
     class NumberExprAST : public ExprAST
     {
@@ -144,7 +146,10 @@ namespace AST {
     llvm::Value* NumberExprAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         auto s = ToStdString(str);
+        //TODO make number codegen
     }
+
+
 
     llvm::Value* VariableExpression::codeGen(Metadata* pmeta) {
         // Look this variable up in the function.

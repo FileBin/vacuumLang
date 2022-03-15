@@ -110,6 +110,16 @@ public:
             return token = Token::Colon;
         }
 
+        if (consist("{")) {
+            pop();
+            return token = Token::BraceOpen;
+        }
+
+        if (consist("}")) {
+            pop();
+            return token = Token::BraceClose;
+        }
+
         //Operators
         Operator* op;
         if (Operator::TryParse(reversedBuffer(), op)) {

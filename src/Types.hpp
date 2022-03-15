@@ -72,6 +72,7 @@ protected:
     Type* super_type = nullptr;
     STD vector<Type*> interfaces;
     Enum type = Unknown;
+    llvm::Type* llvm_type = nullptr;
 
     Location location;
     STD vector<PMember> members;
@@ -82,7 +83,7 @@ protected:
     bool is_abstract = false;
 
     virtual int getClassSize() = 0;
-    virtual llvm::Type* getClassLlvmType() = 0;
+    virtual llvm::Type* getClassLlvmType(llvm::LLVMContext& context) = 0;
 public:
     Type(Metadata* pmeta, Enum type_enum = Unknown) : pmeta(pmeta) {
         interfaces = {};
@@ -136,6 +137,7 @@ public:
     }
 
     int getByteSize() {
+        //FIXME remove this line when vacuum code will work
         if (type == Type::Class) return 0;
         if (is_proto) logError("Type " + getName() + " is not defined!");
         switch (type) {
@@ -163,9 +165,6 @@ public:
         case Dbl:
             return 8; //64bit
 
-        case Pointer:
-            return 8; //64-bit pointer
-
         case Class:
             return getClassSize();
         default:
@@ -182,11 +181,12 @@ public:
         return location.getName() + getName();
     }
 
-    String getLlvmName() {
-        return location.getLlvmName() + "typ_" + getName();
+    STD string getLlvmName() {
+        return location.getLlvmName() + "typ_" + ToStdString(getName());
     }
 
     void createDefinition(Type* super_ty, STD vector<PMember> _members = {}) {
+        //FIXME uncomment line below when vacuum code will work
         //if(super_ty->is_proto) logError("Type " + super_ty->toString() + " is not defined!");
         super_type = super_ty;
         members = _members;
@@ -194,33 +194,35 @@ public:
     }
 
     llvm::Type* getLlvmType(llvm::LLVMContext& context) {
+        using T = llvm::Type;
+        if(llvm_type) return llvm_type;
         switch (type)
         {
         case Object:
         case Void:
-            return llvm::Type::getVoidTy(context);
+            return llvm_type = T::getVoidTy(context);
         case Bool:
-            return llvm::Type::getInt1Ty(context);
+            return llvm_type = T::getInt1Ty(context);
         case SByte:
         case Byte:
-            return llvm::Type::getInt8Ty(context);
+            return llvm_type = T::getInt8Ty(context);
         case Short:
         case UShort:
-            return llvm::Type::getInt16Ty(context);
+            return llvm_type = T::getInt16Ty(context);
         case Int:
         case UInt:
-            return llvm::Type::getInt32Ty(context);
+            return llvm_type = T::getInt32Ty(context);
         case Num:
         case UNum:
-            return llvm::Type::getInt64Ty(context);
+            return llvm_type = T::getInt64Ty(context);
 
         case Flt:
-            return llvm::Type::getFloatTy(context);
+            return llvm_type = T::getFloatTy(context);
         case Dbl:
-            return llvm::Type::getDoubleTy(context);
+            return llvm_type = T::getDoubleTy(context);
 
         case Class:
-            return getClassLlvmType();
+            return llvm_type = getClassLlvmType(context);
 
         default:
             logError("Unknown Type " + getFullName() + "!");
@@ -264,6 +266,7 @@ public:
 
     PMember getMember(String name);
     int getMemberIndex(String name);
+    int getFieldIndex(String name);
     STD vector<PMember> getMembers() { return members; }
 };
 
@@ -275,10 +278,9 @@ public:
         Field = 0,
         Property,
         Function,
-    };
-    bool isStatic, isVirtual, isAbstract;
+    } mem_ty;
+    bool isStatic, isVirtual, isAbstract, isRef, isNativeP;
 protected:
-    Enum mem_ty;
     PType ty, class_ty;
     String name;
 public:
@@ -300,7 +302,7 @@ public:
         return class_ty->getFullName() + L"." + name;
     }
 
-    virtual String getLlvmName() = 0;
+    virtual STD string getLlvmName() = 0;
 };
 
 struct Variable {
@@ -324,8 +326,8 @@ public:
     Field(String name, PType class_type, PType type)
         : Member(name, type, class_type, Member::Field) {}
 
-    String getLlvmName() override {
-        return L"fld_" + name;
+    STD string getLlvmName() override {
+        return ToStdString(name);
     }
 };
 
@@ -350,8 +352,8 @@ public:
         return body;
     }
 
-    String getLlvmName() override {
-        return class_ty->getLlvmName() + L"_fnc_" + name;
+    STD string getLlvmName() override {
+        return class_ty->getLlvmName() + "_fnc_" + ToStdString(name);
     }
 };
 
@@ -372,8 +374,8 @@ public:
         mem_ty = Member::Property;
     }
 
-    String getLlvmName() override {
-        return L"prp_" + name;
+    STD string getLlvmName() override {
+        return "prp_" + ToStdString(name);
     }
 };
 
@@ -391,6 +393,20 @@ int ty::getMemberIndex(String name) {
         if (members[i]->getName() == name) {
             return i;
         }
+    }
+    return -1;
+}
+
+int ty::getFieldIndex(String name) {
+    size_t n = members.size();
+    int idx = 0;
+    for (auto mem : members) {
+        if(mem->mem_ty != Member::Field)
+            continue;
+        if (mem->getName() == name) {
+            return idx;
+        }
+        idx++;
     }
     return -1;
 }

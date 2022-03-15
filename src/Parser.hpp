@@ -31,9 +31,7 @@ public:
     Metadata* pmeta;
 
 public:
-    CodeParser() {
-        init();
-    }
+    CodeParser() {}
 
     node_t parse(Metadata* meta, TokenBufferStream& stream) {
         pmeta = meta;
@@ -42,15 +40,6 @@ public:
     }
 
 protected:
-    void init() {
-        using namespace llvm;
-        // Open a new context and module.
-        TheContext = STD make_unique<LLVMContext>();
-        TheModule = STD make_unique<Module>("main", *TheContext);
-
-        // Create a new builder for the module.
-        Builder = STD make_unique<IRBuilder<>>(*TheContext);
-    }
 
     Token GetNextToken() {
         return currentToken = stream->moveNext();
@@ -58,8 +47,8 @@ protected:
 
     /// numberexpr ::= number
     expr_t ParseNumberExpr() {
-        Type* ty = Type::getInstance(pmeta, Type::Num);
         //TODO: make type parsing
+        Type* ty = Type::getInstance(pmeta, Type::Num);
         auto Result = std::make_unique<AST::NumberExprAST>(this, ty, *currentToken.getData<String>());
         GetNextToken(); // consume the number
         return std::move(Result);

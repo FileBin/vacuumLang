@@ -1,69 +1,67 @@
 #pragma once
 #include "stdafx.hpp"
 namespace Constant {
-    CEXPRSTR operators[] = {
-        
-        L"+",    //Add
-        L"-",    //Sub,
-        L"*",    //Mul,
-        L"/",    //Div,
-        L"%",    //Mod,
+    CEXPRCSTR operators[] = {
 
-        L"++",    //Incr,
-        L"--",    //Decr,
+        "+",    //Add
+        "-",    //Sub,
+        "*",    //Mul,
+        "/",    //Div,
+        "%",    //Mod,
+
+        "++",    //Incr,
+        "--",    //Decr,
 
         //bit
-        L"<<",    //BitMoveL,
-        L">>",    //BitMoveR,
-        L"&",    //BitAnd,
-        L"|",    //BitOr,
-        L"~",    //BitNot,
-        L"^",    //BitXor,
+        "<<",    //BitMoveL,
+        ">>",    //BitMoveR,
+        "&",    //BitAnd,
+        "|",    //BitOr,
+        "~",    //BitNot,
+        "^",    //BitXor,
 
         //boolean
-        L"&&",    //And,
-        L"||",    //Or,
-        L"!",    //Not,
+        "&&",    //And,
+        "||",    //Or,
+        "!",    //Not,
 
         //compare
-        L">",    //Greater,
-        L"<",    //Less,
-        L"==",    //Equal,
-        L">=",    //GreaterEqual,
-        L"<=",    //LessEqual,
-        L"!=",    //NotEqual,
+        ">",    //Greater,
+        "<",    //Less,
+        "==",    //Equal,
+        ">=",    //GreaterEqual,
+        "<=",    //LessEqual,
+        "!=",    //NotEqual,
 
         //assign
-        L"=",    //Assign,
-        L"+=",    //AssignAdd,
-        L"-=",    //AssignSub,
-        L"*=",    //AssignMul,
-        L"/=",    //AssignDiv,
-        L"%=",    //AssignMod,
+        "=",    //Assign,
+        "+=",    //AssignAdd,
+        "-=",    //AssignSub,
+        "*=",    //AssignMul,
+        "/=",    //AssignDiv,
+        "%=",    //AssignMod,
 
-        L"<<=",    //AssignBitMoveL,
-        L">>=",    //AssignBitMoveR,
-        L"&=",    //AssignBitAnd,
-        L"|=",    //AssignBitOr,
-        L"~=",    //AssignBitNot,
-        L"^=",    //AssignBitXor,
+        "<<=",    //AssignBitMoveL,
+        ">>=",    //AssignBitMoveR,
+        "&=",    //AssignBitAnd,
+        "|=",    //AssignBitOr,
+        "~=",    //AssignBitNot,
+        "^=",    //AssignBitXor,
 
         //Brackets
-        L"(",    //BracketOpen,
-        L")",    //BracketClose,
-        L"[",    //SqBracketOpen,  //[
-        L"]",    //SqBracketClose, //]
-        L"{",    //BraceOpen,      //{
-        L"}",    //BraceClose,     //}
+        "(",    //BracketOpen,
+        ")",    //BracketClose,
+        "[",    //SqBracketOpen,  //[
+        "]",    //SqBracketClose, //]
 
         //Other
-        L".",    //Dot,
-        L"?",    //Ternar,
+        ".",    //Dot,
+        "?",    //Ternar,
     };
 }
 
 class Operator : public IPrintable {
-    public:
+public:
     enum Enum {
         Unknown = -1,
 
@@ -118,8 +116,6 @@ class Operator : public IPrintable {
         BracketClose,   //)
         SqBracketOpen,  //[
         SqBracketClose, //]
-        BraceOpen,      //{
-        BraceClose,     //}
 
         //Other
         Dot,
@@ -127,8 +123,8 @@ class Operator : public IPrintable {
     } ty;
 
     int priority = 1;
-    public:
-    Operator(Enum e = Unknown){
+public:
+    Operator(Enum e = Unknown) {
         ty = e;
         priority = GetPriority(e);
     }
@@ -166,7 +162,7 @@ class Operator : public IPrintable {
 
         case Dot:
             return true;
-        
+
         default:
             return false;
         }
@@ -219,7 +215,7 @@ class Operator : public IPrintable {
         case BitMoveL:
         case BitMoveR:
             return 10;
-        
+
         case Add:
         case Sub:
             return 11;
@@ -237,82 +233,77 @@ class Operator : public IPrintable {
         case Dot:
             return 14;
 
-        case BraceOpen:
-        case BraceClose:
-            return 15;
-
         case SqBracketOpen:
         case SqBracketClose:
-            return 16;
-                
+            return 15;
+
         case BracketOpen:
         case BracketClose:
-            return 17;
-        
+            return 16;
+
         default:
             return -(int)op;
             break;
         }
     }
-    size_t GetLen() { return LEN(Constant::operators[(size_t)ty]); }
+    size_t GetLen() { return strlen(Constant::operators[(size_t)ty]); }
 
     String toString() override {
         switch (ty)
         {
-        case Assign: return L"Assign";
-        case AssignAdd: return L"AssignAdd";
-        case AssignSub: return L"AssignSub";
-        case AssignMul: return L"AssignMul";
-        case AssignMod: return L"AssignMod";
-        case AssignBitMoveL: return L"AssignBitMoveL";
-        case AssignBitMoveR: return L"AssignBitMoveR";
-        case AssignBitAnd: return L"AssignBitAnd";
-        case AssignBitOr: return L"AssignBitOr";
-        case AssignBitNot: return L"AssignBitNot";
-        case AssignBitXor: return L"AssignBitXor";
-        case Ternar: return L"Ternar";
-        case Or: return L"Or";
-        case And: return L"And";
-        case BitOr: return L"BitOr";
-        case BitXor: return L"BitXor";
-        case BitAnd: return L"BitAnd";
-        case Equal: return L"Equal";
-        case NotEqual: return L"NotEqual";
-        case Greater: return L"Greater";
-        case GreaterEqual: return L"GreaterEqual";
-        case Less: return L"Less";
-        case LessEqual: return L"LessEqual";
-        case BitMoveL: return L"BitMoveL";
-        case BitMoveR: return L"BitMoveR";
-        case Add: return L"Add";
-        case Sub: return L"Sub";
-        case Mul: return L"Mul";
-        case Div: return L"Div";
-        case Mod: return L"Mod";
-        case Incr: return L"Incr";
-        case Decr: return L"Decr";
-        case Not: return L"Not";
-        case BitNot: return L"BitNot";
-        case Dot: return L"Dot";
-        case BracketOpen: return L"BracketOpen";
-        case BracketClose: return L"BracketClose";
-        case SqBracketOpen: return L"SqBracketOpen";
-        case SqBracketClose: return L"SqBracketClose";
-        case BraceOpen: return L"BraceOpen";
-        case BraceClose: return L"BraceClose";
-        
-        default: return L"Unknown";
+        case Assign: return "Assign";
+        case AssignAdd: return "AssignAdd";
+        case AssignSub: return "AssignSub";
+        case AssignMul: return "AssignMul";
+        case AssignMod: return "AssignMod";
+        case AssignBitMoveL: return "AssignBitMoveL";
+        case AssignBitMoveR: return "AssignBitMoveR";
+        case AssignBitAnd: return "AssignBitAnd";
+        case AssignBitOr: return "AssignBitOr";
+        case AssignBitNot: return "AssignBitNot";
+        case AssignBitXor: return "AssignBitXor";
+        case Ternar: return "Ternar";
+        case Or: return "Or";
+        case And: return "And";
+        case BitOr: return "BitOr";
+        case BitXor: return "BitXor";
+        case BitAnd: return "BitAnd";
+        case Equal: return "Equal";
+        case NotEqual: return "NotEqual";
+        case Greater: return "Greater";
+        case GreaterEqual: return "GreaterEqual";
+        case Less: return "Less";
+        case LessEqual: return "LessEqual";
+        case BitMoveL: return "BitMoveL";
+        case BitMoveR: return "BitMoveR";
+        case Add: return "Add";
+        case Sub: return "Sub";
+        case Mul: return "Mul";
+        case Div: return "Div";
+        case Mod: return "Mod";
+        case Incr: return "Incr";
+        case Decr: return "Decr";
+        case Not: return "Not";
+        case BitNot: return "BitNot";
+        case Dot: return "Dot";
+        case BracketOpen: return "BracketOpen";
+        case BracketClose: return "BracketClose";
+        case SqBracketOpen: return "SqBracketOpen";
+        case SqBracketClose: return "SqBracketClose";
+
+        default: return "Unknown";
         }
     }
 
-    static bool TryParse(String str, Operator* &op){
+    static bool TryParse(String str, Operator*& op) {
         using namespace Constant;
 
         Enum ty = Unknown;
         size_t len = 0;
-        for(size_t i=0; i<ARRSIZE(operators); i++){
-            if(len < LEN(operators[i]) && str.substr(0, LEN(operators[i])) == operators[i]){
-                len = LEN(operators[i]);
+        for (size_t i = 0; i < ARRSIZE(operators); i++) {
+            auto l = strlen(operators[i]);
+            if (len < l && str.substr(0, l) == String(operators[i])) {
+                len = l;
                 ty = (Enum)i;
             }
         }

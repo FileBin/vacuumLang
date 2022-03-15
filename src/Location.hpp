@@ -9,13 +9,13 @@ public:
         String name;
         enum Enum { Class, Namespace } type;
 
-        String getLlvmName() {
+        STD string getLlvmName() {
             switch (type)
             {
             case Class:
-                return "cls_" + name;
+                return "cls_" + ToStdString(name);
             case Namespace:
-                return "nsp_" + name;
+                return "nsp_" + ToStdString(name);
             }
             logError("Unknown location type");
             return "";
@@ -45,10 +45,10 @@ public:
         return full_name;
     }
 
-    String getLlvmName() {
+    std::string getLlvmName() {
         if (data.empty()) return "";
         auto it = data.begin();
-        String llvm_name = it->getLlvmName();
+        std::string llvm_name = it->getLlvmName();
         for (;it != data.end();it++) {
             llvm_name += "_" + it->getLlvmName();
         }
