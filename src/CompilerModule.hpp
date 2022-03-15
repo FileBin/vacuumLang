@@ -160,7 +160,7 @@ private:
                         return parseFunction(modifiers, name, class_ty);
                     }
                     if (token.getData<Operator>()->ty == Operator::BraceOpen) {
-                        return parseProperty(class_ty);
+                        return parseProperty(modifiers, name ,class_ty);
                     }
                 }
 
@@ -209,7 +209,7 @@ private:
         TokenBufferStream stream;
     }
 
-    Property* parseProperty(Type* class_ty) {
+    Property* parseProperty(Mods mods, String name, Type* class_ty) {
         moveNext();
         Keyword kw, kw_vis;
         Mods modifiers = {};

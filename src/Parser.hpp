@@ -31,14 +31,17 @@ public:
     std::unique_ptr<llvm::IRBuilder<>> Builder;
     std::map<String, llvm::Value*> NamedValues;
     TokenBufferStream* stream;
+    Metadata* pmeta;
 
 public:
     Parser() {
         init();
     }
 
-    node_t parse(TokenBufferStream& stream) {
-        //TODO make function parsing
+    node_t parse(Metadata* meta, TokenBufferStream& stream) {
+        pmeta = meta;
+        //TODO: make function parsing
+        pmeta = nullptr;
     }
 
 protected:
@@ -58,7 +61,9 @@ protected:
 
     /// numberexpr ::= number
     expr_t ParseNumberExpr() {
-        auto Result = std::make_unique<AST::NumberExprAST>(this, *currentToken.getData<String>());
+        Type* ty = Type::getInstance(pmeta, Type::Num);
+        //TODO: make type parsing
+        auto Result = std::make_unique<AST::NumberExprAST>(this, ty, *currentToken.getData<String>());
         GetNextToken(); // consume the number
         return std::move(Result);
     }
@@ -113,8 +118,12 @@ protected:
                 RHS = ParseBinOpRHS(priority + 1, std::move(RHS));
             }
 
+            Type* ty;
+            //TODO: make some type merging
+            ty = LHS->type;
+
             // Merge LHS/RHS.
-            LHS = std::make_unique<AST::BinaryExprAST>(this, ::Operator(BinOp), STD move(LHS), STD move(RHS));
+            LHS = std::make_unique<AST::BinaryExprAST>(this, ty, ::Operator(BinOp), STD move(LHS), STD move(RHS));
         }
     }
 

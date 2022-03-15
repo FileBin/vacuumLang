@@ -3,7 +3,7 @@
 namespace Constant {
     CEXPRSTR operators[] = {
         
-        L"+", //Add
+        L"+",    //Add
         L"-",    //Sub,
         L"*",    //Mul,
         L"/",    //Div,

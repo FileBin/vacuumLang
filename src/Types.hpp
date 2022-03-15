@@ -2,6 +2,7 @@
 
 #include "stdafx.hpp"
 #include "Location.hpp"
+#include "ASTheader.h"
 
 struct Member;
 struct Metadata;
@@ -27,6 +28,13 @@ namespace Constant {
         "object",
     };
 }
+
+enum class StdType {
+    Unknown = -1,
+    Unsigned,
+    Signed,
+    Float,
+};
 
 class Type : public IPrintable {
 public:
@@ -71,6 +79,7 @@ protected:
     bool isProto = false;
 
     virtual int getClassSize() = 0;
+    virtual llvm::Type* getClassLlvmType();
 public:
     Type(Metadata* pmeta, Enum type_enum = Unknown) : pmeta(pmeta) {
         interfaces = {};
@@ -97,8 +106,30 @@ public:
         return pmeta;
     }
 
+    StdType getStdType() noexcept {
+        switch (type)
+        {
+        case Byte:
+        case UShort:
+        case UInt:
+        case UNum:
+        case Char:
+            return StdType::Unsigned;
+        case SByte:
+        case Short:
+        case Int:
+        case Num:
+            return StdType::Signed;
+        case Flt:
+        case Dbl:
+            return StdType::Float;
+        default:
+            return StdType::Unknown;
+        }
+    }
+
     int getByteSize() {
-        if(type == Type::Class) return 0;
+        if (type == Type::Class) return 0;
         if (isProto) logError("Type " + getName() + " is not defined!");
         switch (type) {
         case Object:
@@ -162,13 +193,54 @@ public:
         members = _members;
         isProto = false;
     }
+
+    llvm::Type* getLlvmType(llvm::LLVMContext& context) {
+        switch (type)
+        {
+        case Object:
+        case Void:
+            return llvm::Type::getVoidTy(context);
+        case Bool:
+            return llvm::Type::getInt1Ty(context);
+        case SByte:
+        case Byte:
+            return llvm::Type::getInt8Ty(context);
+        case Short:
+        case UShort:
+            return llvm::Type::getInt16Ty(context);
+        case Int:
+        case UInt:
+            return llvm::Type::getInt32Ty(context);
+        case Num:
+        case UNum:
+            return llvm::Type::getInt64Ty(context);
+
+        case Flt:
+            return llvm::Type::getFloatTy(context);
+        case Dbl:
+            return llvm::Type::getDoubleTy(context);
+
+        case Class:
+            return getClassLlvmType();
+
+        default:
+            logError("Unknown Type " + getFullName() + "!");
+            return 0;
+        }
+    }
+
+    static bool isStd(Type* ty) {
+        return ty->type >= 0;
+    }
+
     static String getName(Enum en) {
-        if(en > 0) {
+        if (en > 0) {
             return Constant::types[(size_t)en];
         }
         logError("Fuck yoy leatherman");
         return "";
     }
+
     static Type* getInstance(Metadata* pmeta, String name, Location location = {});
     static Type* getInstance(Metadata* pmeta, Enum en);
     static Type* createPrototype(Metadata* pmeta, String name, Location loc = {});
@@ -271,10 +343,10 @@ public:
         : Member(name, type, class_type, Member::Property),
         f_get(name + "_get", class_type, type),
         f_set(name + "_set", class_type, Type::getInstance(class_ty->getMeta(), Type::Void),
-        { new Variable(type, "v") }) {
-            if(need_variable){
-                variable = new ::Field(name + "_var", class_type, type);
-            }
+            { new Variable(type, "v") }) {
+        if (need_variable) {
+            variable = new ::Field(name + "_var", class_type, type);
+        }
         ty = type;
         mem_ty = Member::Property;
     }
@@ -316,7 +388,7 @@ Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
 
 Type* Type::getInstance(Metadata* pmeta, String name, Location location) {
     auto ptr = pmeta->classTree.find<String>(location.getName() + name)->data;
-    if(ptr == nullptr)
+    if (ptr == nullptr)
         ptr = createPrototype(pmeta, name, location);
     return ptr;
 }

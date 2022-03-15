@@ -19,25 +19,19 @@ namespace AST {
     /// ExprAST - Base class for all expression nodes.
     class ExprAST : public IASTNode {
     public:
+        Type* type;
         STD shared_ptr<Parser> parser;
-        ExprAST(Parser* parser) : parser(parser) {}
+        ExprAST(Parser* parser, Type* type) : parser(parser), type(type) {}
         virtual ~ExprAST() = default;
     };
 
     /// NumberExprAST - Expression class for numeric literals like "1.0".
     class NumberExprAST : public ExprAST
     {
-        Type::Enum ty;
         String str;
 
     public:
-        NumberExprAST(Parser* parser, String str) : ExprAST(parser), str(str) {
-            ty = Type::Num;
-
-            if (str.find('e') || str.find('.')) {
-                ty = Type::Dbl;
-            }
-        }
+        NumberExprAST(Parser* parser, Type* type, String str) : ExprAST(parser, type), str(str) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -48,31 +42,7 @@ namespace AST {
         String name;
 
     public:
-        VariableExpression(Parser* parser, String name, Type* type) : ExprAST(parser), name(name), type(type) {}
-
-        llvm::Value* codeGen(Metadata* pmeta) override;
-    };
-
-    class ClassExpression : public ExprAST {
-        String name;
-        STD vector<Keyword> modifiers;
-        Type* super;
-
-    public:
-        ClassExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
-            : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
-
-        llvm::Value* codeGen(Metadata* pmeta) override;
-    };
-
-    class InterfaceExpression : public ExprAST {
-        String name;
-        STD vector<Keyword> modifiers;
-        Type* super;
-
-    public:
-        InterfaceExpression(Parser* parser, String name, Type* super_ty, STD vector<Keyword> modifiers = {})
-            : ExprAST(parser), name(name), modifiers(modifiers), super(super_ty) {}
+        VariableExpression(Parser* parser, Type* type, String name) : ExprAST(parser, type), name(name), type(type) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -84,23 +54,26 @@ namespace AST {
         STD unique_ptr<ExprAST> LHS, RHS;
 
     public:
-        BinaryExprAST(Parser* parser, Operator Op, STD unique_ptr<ExprAST> LHS,
+        BinaryExprAST(Parser* parser, Type* ty, Operator Op, STD unique_ptr<ExprAST> LHS,
             STD unique_ptr<ExprAST> RHS)
-            : ExprAST(parser), Op(Op), LHS(STD move(LHS)), RHS(STD move(RHS)) {}
+            : ExprAST(parser, ty), Op(Op), LHS(STD move(LHS)), RHS(STD move(RHS)) {
+            if (!Type::isStd(ty))
+                logError("Not standart type (" + ty->toString() + ") occured whe generating division operator!");
+            type = ty;
+        }
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
     /// CallExprAST - Expression class for function calls.
-    class CallExprAST : public ExprAST
-    {
+    class CallExprAST : public ExprAST {
         String Callee;
         STD vector<STD unique_ptr<ExprAST>> Args;
 
     public:
-        CallExprAST(Parser* parser, const String& Callee,
+        CallExprAST(Parser* parser, Type* type, const String& Callee,
             STD vector<STD unique_ptr<ExprAST>> Args)
-            : ExprAST(parser), Callee(Callee), Args(STD move(Args)) {}
+            : ExprAST(parser, type), Callee(Callee), Args(STD move(Args)) {}
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
 
@@ -147,18 +120,7 @@ namespace AST {
     llvm::Value* NumberExprAST::codeGen(Metadata* pmeta) {
         using namespace llvm;
         auto s = ToStdString(str);
-        switch (ty)
-        {
-        case ::Type::Num:
-            return ConstantInt::get(*parser->TheContext,
-                APInt(8 * ::Type::getInstance(pmeta, ::Type::Num)->getByteSize(), s, 10));
-        case ::Type::Dbl:
-            return llvm::ConstantFP::get(*parser->TheContext, APFloat(APFloat::IEEEdouble(), s));
 
-        default:
-            logError("Unknown number type");
-            return 0;
-        }
     }
 
     llvm::Value* VariableExpression::codeGen(Metadata* pmeta)
@@ -172,25 +134,101 @@ namespace AST {
 
     llvm::Value* BinaryExprAST::codeGen(Metadata* pmeta)
     {
-        llvm::Value* L = LHS->codeGen(pmeta);
-        llvm::Value* R = RHS->codeGen(pmeta);
+        using Cmp = llvm::CmpInst;
+        using T = llvm::Type;
+        auto L = LHS->codeGen(pmeta);
+        auto R = RHS->codeGen(pmeta);
         if (!L || !R)
             return nullptr;
 
-        switch (Op.ty)
+        auto& b = parser->Builder;
+        auto& c = *parser->TheContext.get();
+
+        switch (type->getStdType())
         {
-        case Operator::Add:
-            return parser->Builder->CreateFAdd(L, R, "addtmp");
-        case Operator::Sub:
-            return parser->Builder->CreateFSub(L, R, "subtmp");
-        case Operator::Mul:
-            return parser->Builder->CreateFMul(L, R, "multmp");
-        case Operator::Less:
-            L = parser->Builder->CreateFCmpULT(L, R, "cmptmp");
-            // Convert bool 0/1 to double 0.0 or 1.0
-            return parser->Builder->CreateUIToFP(L, llvm::Type::getDoubleTy(*parser->TheContext), "booltmp");
+        case StdType::Signed:
+            switch (Op.ty)
+            {
+            case Operator::Add:
+                return b->CreateAdd(L, R, "iadd");
+            case Operator::Sub:
+                return b->CreateSub(L, R, "isub");
+            case Operator::Mul:
+                return b->CreateMul(L, R, "imul");
+            case Operator::Div:
+                return b->CreateSDiv(L, R, "sdiv");
+            case Operator::Mod: // l - (r*(l/r))
+                return b->CreateSub(L, b->CreateMul(R, b->CreateSDiv(L, R, "sdiv"), "imul"), "isub");
+            case Operator::Less:
+                return b->CreateICmpSLT(L, R, "scmplt");
+            case Operator::Greater:
+                return b->CreateICmpSGT(L, R, "scmpsgt");
+            case Operator::LessEqual:
+                return b->CreateICmpSLE(L, R, "scmple");
+            case Operator::GreaterEqual:
+                return b->CreateICmpSGE(L, R, "scmpge");
+            case Operator::Equal:
+                return b->CreateICmpEQ(L, R, "icmpeq");
+            default:
+                logError("Invalid binary operator!");
+                return 0;
+            }
+        case StdType::Unsigned:
+            switch (Op.ty)
+            {
+            case Operator::Add:
+                return b->CreateAdd(L, R, "iadd");
+            case Operator::Sub:
+                return b->CreateSub(L, R, "isub");
+            case Operator::Mul:
+                return b->CreateMul(L, R, "imul");
+            case Operator::Div:
+                return b->CreateUDiv(L, R, "udiv");
+            case Operator::Mod: // l - (r*(l/r))
+                return b->CreateSub(L, b->CreateMul(R, b->CreateUDiv(L, R, "udiv"), "imul"), "isub");
+            case Operator::Less:
+                return b->CreateICmpSLT(L, R, "scmplt");
+            case Operator::Greater:
+                return b->CreateICmpSGT(L, R, "scmpsgt");
+            case Operator::LessEqual:
+                return b->CreateICmpSLE(L, R, "scmple");
+            case Operator::GreaterEqual:
+                return b->CreateICmpSGE(L, R, "scmpge");
+            case Operator::Equal:
+                return b->CreateICmpEQ(L, R, "icmpeq");
+            default:
+                logError("Invalid binary operator!");
+                return 0;
+            }
+        case StdType::Float:
+            switch (Op.ty)
+            {
+            case Operator::Add:
+                return b->CreateFAdd(L, R, "fadd");
+            case Operator::Sub:
+                return b->CreateFSub(L, R, "fsub");
+            case Operator::Mul:
+                return b->CreateFMul(L, R, "fmul");
+            case Operator::Div:
+                return b->CreateFDiv(L, R, "fdiv");
+            case Operator::Mod: //  trunc(l/r)*r
+                return b->CreateFPTrunc(b->CreateFDiv(L,R, "fdiv"), type->getLlvmType(c), "ftruncf");
+            case Operator::Less:
+                return b->CreateFCmpULT(L, R, "fcmplt");
+            case Operator::Greater:
+                return b->CreateFCmpUGT(L, R, "fcmpsgt");
+            case Operator::LessEqual:
+                return b->CreateFCmpULE(L, R, "fcmple");
+            case Operator::GreaterEqual:
+                return b->CreateFCmpUGE(L, R, "fcmpge");
+            case Operator::Equal:
+                return b->CreateFCmpUEQ(L, R, "fcmpeq");
+            default:
+                logError("Invalid binary operator!");
+                return 0;
+            }
         default:
-            logError("invalid binary operator");
+            logError("Unknown type");
             return 0;
         }
     }
@@ -264,7 +302,7 @@ namespace AST {
             parser->Builder->CreateRet(RetVal);
 
             // Validate the generated code, checking for consistency.
-            verifyFunction(*TheFunction);
+            llvm::verifyFunction(*TheFunction);
 
             return TheFunction;
         }
