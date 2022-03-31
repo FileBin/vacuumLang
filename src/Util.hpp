@@ -46,10 +46,14 @@ public:
     struct Node;
     typedef Node* PNode;
     struct Node : IPrintable {
+    public:
+        typedef STD vector<PNode> vec_t;
+        typedef typename STD vector<PNode>::iterator it_t;
     private:
         friend class Tree;
-        PNode parent;
-        STD vector<PNode> children;
+        PNode parent = nullptr;
+        vec_t children;
+        it_t it;
     public:
 
         T* data;
@@ -57,7 +61,7 @@ public:
             auto ptr = new Node();
             ptr->parent = this;
             ptr->data = d;
-            children.push_back(ptr);
+            ptr->it = children.insert(children.end(), ptr);
             return ptr;
         }
 
@@ -71,17 +75,43 @@ public:
             return false;
         }
 
+        PNode getNext() {
+            if (parent == nullptr)
+                return children.front();
+
+            int level = 0;
+            PNode node = this;
+            while (node->it + 1 == node->parent->children.end()) {
+                level++;
+                node = node->parent;
+                if(node->parent == nullptr) break;
+            }
+            if (level == 0)
+                return *(node->it + 1);
+
+            if (node->parent == nullptr) {
+                node = node->children.front();
+            } else {
+                node++;
+            }
+            for (int i = 0; i < level; i++) {
+                if (node->children.empty()) return nullptr;
+                node = node->children.front();
+            }
+            return node;
+        }
+
         String toString() {
-            return ToString(0);
+            return toString(0);
         }
         //min level 0, max level 128
-        String ToString(int level) {
+        String toString(int level) {
             char buf[0x100];
             memset(&buf, ' ', sizeof(buf));
-            buf[level*2] = 0;
+            buf[level * 2] = 0;
             String str = buf + data->toString() + "\n";
-            for(PNode child : children) {
-                str += child->ToString(level+1);
+            for (PNode child : children) {
+                str += child->toString(level + 1);
             }
             return str;
         }
@@ -97,16 +127,22 @@ public:
     template<typename R>
     PNode find(R data) noexcept {
         STD vector<PNode> l = { root }, buf;
-        do {
-            buf.clear();
-            for (PNode node : l) {
-                if (*node->data == data) {
-                    return node;
-                }
-                buf.insert(buf.begin(), node->children.begin(), node->children.end());
-            }
-            l = buf;
-        } while (!buf.empty());
+        /* do {
+             buf.clear();
+             for (PNode node : l) {
+                 if (*node->data == data) {
+                     return node;
+                 }
+                 buf.insert(buf.begin(), node->children.begin(), node->children.end());
+             }
+             l = buf;
+         } while (!buf.empty());*/
+
+        for (PNode p = root; p != nullptr; p = p->getNext()) {
+            if (*p->data == data)
+                return p;
+        }
+
         return nullptr;
     }
 
@@ -147,4 +183,12 @@ String operator+(CCSTR cstr, String s) {
 
 String operator+(String s, CCSTR cstr) {
     return s + String(cstr);
+}
+
+String operator+(String s, STD string str) {
+    return s + str.c_str();
+}
+
+String operator+(STD string s, String str) {
+    return s.c_str() + str;
 }

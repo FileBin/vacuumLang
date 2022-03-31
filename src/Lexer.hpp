@@ -11,16 +11,23 @@ public:
     typedef STD basic_istream<_CharT> StreamType;
     typedef typename STD basic_istream<_CharT>::int_type IntType;
     typedef STD basic_string<_CharT> StringType;
+    typedef STD vector<StreamType*> StreamsType;
+    typedef typename StreamsType::iterator StreamIt;
 
 private:
-    StreamType& stream;
-    static constexpr size_t BUFFER_SIZE = 0x80;
+    StreamsType streams;
+    StreamIt currentStream;
+    static constexpr size_t BUFFER_SIZE = 0x100;
     char_t buffer[BUFFER_SIZE] = { 0 };
     IntType current = 0;
     Token token;
 public:
-    Lexer(StreamType& stream) : stream(stream) {}
+    Lexer(StreamType& stream) : streams() {
+        streams.push_back(&stream);
+        currentStream = streams.begin();
+    }
 
+    Lexer(StreamsType streams) : streams(streams) { currentStream = streams.begin(); }
     Token getCurrentToken() {
         return token;
     }
@@ -145,7 +152,7 @@ private:
         return !(iswalnum(ch) || iswspace(ch) || ch == '\n' || ch == 0 || ch == _EOF || ch == '\"');
     }
     void skipUntil(IntType ch) {
-        while (stream.get() != ch);
+        while ((*currentStream)->get() != ch);
     }
 
     void skipSpaces() {
@@ -153,8 +160,14 @@ private:
     }
 
     IntType moveNext() {
-        current = stream.get(); //read char
-        if (iswspace(current) || current == _EOF) return current; //don't store any spaces
+        current = (*currentStream)->get(); //read char
+        if (current == _EOF) {
+            currentStream++;
+            if (currentStream == streams.end())
+                return _EOF;
+            current = (*currentStream)->get(); //read char
+        }
+        if (iswspace(current)) return current; //don't store any spaces
 
         for (size_t i = BUFFER_SIZE - 2;i > 0;i--) //shift buffer
             buffer[i] = buffer[i - 1];

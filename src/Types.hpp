@@ -6,6 +6,7 @@
 
 struct Member;
 struct Metadata;
+struct Enviroment;
 
 namespace Constant {
     CEXPRCSTR types[]{
@@ -195,7 +196,7 @@ public:
 
     llvm::Type* getLlvmType(llvm::LLVMContext& context) {
         using T = llvm::Type;
-        if(llvm_type) return llvm_type;
+        if (llvm_type) return llvm_type;
         switch (type)
         {
         case Object:
@@ -235,7 +236,7 @@ public:
     }
 
     static String getName(Enum en) {
-        if (en > 0) {
+        if (en >= 0) {
             return Constant::types[(size_t)en];
         }
         logError("Fuck yoy leatherman");
@@ -261,6 +262,7 @@ public:
     }
 
     static Type* getInstance(Metadata* pmeta, String name, Location location = {});
+    static bool tryGetInstance(Type* &ty, Metadata* pmeta, String name, Enviroment& env);
     static Type* getInstance(Metadata* pmeta, Enum en);
     static Type* createPrototype(Metadata* pmeta, String name, Location loc = {});
 
@@ -382,7 +384,7 @@ public:
 typedef ::Type ty;
 ty::PMember ty::getMember(String name) {
     int idx;
-    if((idx = getMemberIndex(name)) >= 0)
+    if ((idx = getMemberIndex(name)) >= 0)
         return members[idx];
     return nullptr;
 }
@@ -401,7 +403,7 @@ int ty::getFieldIndex(String name) {
     size_t n = members.size();
     int idx = 0;
     for (auto mem : members) {
-        if(mem->mem_ty != Member::Field)
+        if (mem->mem_ty != Member::Field)
             continue;
         if (mem->getName() == name) {
             return idx;
@@ -420,6 +422,7 @@ bool operator==(::Type& a, String b) {
 }
 
 #include "ClassFactory.hpp"
+#include "Enviroment.hpp"
 
 Type* Type::createPrototype(Metadata* m, String name, Location loc) {
     return Objects::ClassFactory::createProto(m, loc, name);
@@ -432,10 +435,25 @@ Type* Type::getInstance(Metadata* pmeta, Type::Enum ty) {
 }
 
 Type* Type::getInstance(Metadata* pmeta, String name, Location location) {
-    auto ptr = pmeta->classTree.find<String>(location.getName() + name)->data;
+    auto ptr = pmeta->classTree.find<String>(location.getName() + name);
     if (ptr == nullptr)
-        ptr = createPrototype(pmeta, name, location);
-    return ptr;
+        ptr->data = createPrototype(pmeta, name, location);
+    return ptr->data;
+}
+
+bool Type::tryGetInstance(Type*& ty, Metadata* pmeta, String name, Enviroment& env) {
+    STD vector<Location> locs = env.getIncludes();
+    locs.insert(locs.begin(), env.current());
+    Tree<Type>::Node* ptr = nullptr;
+    size_t i = 0;
+    size_t n = locs.size();
+    while (ptr == nullptr) {
+        ptr = pmeta->classTree.find<String>(locs[i++].getName() + name);
+        if(i < n) continue;
+        return false;
+    }
+    ty = ptr->data;
+    return true;
 }
 
 Location& Location::operator+=(Type* ty) {

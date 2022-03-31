@@ -11,6 +11,7 @@
 #include <map>
 #include <stack>
 #include <vector>
+#include <sstream>
 
 #define ARRSIZE(o) sizeof(o)/sizeof(o[0])
 

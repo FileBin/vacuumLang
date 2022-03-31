@@ -27,27 +27,42 @@ namespace AST {
             children.push_back(STD unique_ptr<IASTNode>(node));
         }
 
-        llvm::Value* codeGen(Metadata* pmeta) override;
+        llvm::Value* codeGen(Metadata* pmeta) override {
+            for(const auto& node : children) {
+                node->codeGen(pmeta);
+            }
+            return nullptr;
+        }
     };
     /// ExprAST - Base class for all expression nodes.
     class ExprAST : public IASTNode {
     public:
-        typedef STD shared_ptr<ScopeAST> Scope;
+        typedef STD unique_ptr<ExprAST> expr_t;
+        typedef STD unique_ptr<ScopeAST> Scope;
         Scope scope;
         Type* type;
         STD shared_ptr<CompilerModule> module;
-        ExprAST(CompilerModule* module, Type* type, Scope scope) : module(module), type(type), scope(scope) {}
+        ExprAST(CompilerModule* module, Type* type, Scope& scope) : module(module), type(type), scope(STD move(scope)) {}
         virtual ~ExprAST() = default;
     };
 
-    // TODO add cast node
+    class CastAST : public ExprAST {
+        expr_t variable;
+        enum CastType {
+            Int, Float, Class, Ref,
+        } cast_type;
+    public:
+        CastAST(CompilerModule* module, Type* taget_type, expr_t var, Scope& scope);
+
+        llvm::Value* codeGen(Metadata* pmeta) override;
+    };
 
     /// NumberExprAST - Expression class for numeric literals like "1.0".
     class NumberExprAST : public ExprAST
     {
         String str;
     public:
-        NumberExprAST(CompilerModule* module, Scope scope, Type* type, String str) : ExprAST(module, type, scope), str(str) {}
+        NumberExprAST(CompilerModule* module, Scope& scope, Type* type, String str) : ExprAST(module, type, scope), str(str) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -58,7 +73,7 @@ namespace AST {
         String name;
 
     public:
-        VariableExpression(CompilerModule* module, Scope scope, Type* type, String name) : ExprAST(module, type, scope), name(name), type(type) {}
+        VariableExpression(CompilerModule* module, Scope& scope, Type* type, String name) : ExprAST(module, type, scope), name(name), type(type) {}
 
         llvm::Value* codeGen(Metadata* pmeta) override;
     };
@@ -67,10 +82,10 @@ namespace AST {
     class BinaryExprAST : public ExprAST
     {
         Operator Op;
-        STD unique_ptr<ExprAST> LHS, RHS;
+        expr_t LHS, RHS;
 
     public:
-        BinaryExprAST(CompilerModule* module, Scope scope, Type* ty, Operator Op, STD unique_ptr<ExprAST> LHS,
+        BinaryExprAST(CompilerModule* module, Scope& scope, Type* ty, Operator Op, STD unique_ptr<ExprAST> LHS,
             STD unique_ptr<ExprAST> RHS)
             : ExprAST(module, ty, scope), Op(Op),
             LHS(STD move(LHS)),
@@ -90,7 +105,7 @@ namespace AST {
         STD vector<STD unique_ptr<ExprAST>> Args;
 
     public:
-        CallExprAST(CompilerModule* module, Type* type, Scope scope, const String& Callee,
+        CallExprAST(CompilerModule* module, Type* type, Scope& scope, const String& Callee,
             STD vector<STD unique_ptr<ExprAST>> Args)
             : ExprAST(module, type, scope), Callee(Callee), Args(STD move(Args)) {}
         llvm::Value* codeGen(Metadata* pmeta) override;
@@ -149,7 +164,46 @@ namespace AST {
         //TODO make number codegen
     }
 
+    CastAST::CastAST(CompilerModule* module, Type* taget_type, expr_t var, Scope& scope)
+        : ExprAST(module, taget_type, scope), variable(STD move(var)) {
+        if (type->getStdType() == StdType::Unknown) {
+            if (var->type->getStdType() == StdType::Unknown) {
+                cast_type = Class;
+                return;
+            }
+            logError("Can't cast " + var->type->getName() + " to " + type->getName() + "!");
+        }
+        switch (var->type->getStdType()) {
+        case StdType::Signed:
+            if (type->getStdType() == StdType::Unsigned) {
+                logWarning("Cast from signed to unsigned!");
+            } break;
+            cast_type = Int;
+        case StdType::Unsigned:
+            cast_type = Int;
+            break;
+        case StdType::Float:
+            cast_type = Float;
+        default:
+            logError("Can't cast " + var->type->getName() + " to " + type->getName() + "!");
+        }
+    }
 
+    llvm::Value* CastAST::codeGen(Metadata* pmeta) {
+        auto var_type = variable->type;
+        auto& b = module->getBuilder();
+        auto& c = module->getContext();
+        switch (cast_type) {
+        case Int:
+            return b.CreateIntCast(variable->codeGen(pmeta), type->getLlvmType(c), var_type->getStdType() == StdType::Signed, "icast");
+        case Float:
+            return b.CreateFPCast(variable->codeGen(pmeta), type->getLlvmType(c), "fcast");
+        case Class:
+            return b.CreatePointerCast(variable->codeGen(pmeta), llvm::PointerType::get(type->getLlvmType(c), 0), "pcast");
+        default:
+            return 0;
+        }
+    }
 
     llvm::Value* VariableExpression::codeGen(Metadata* pmeta) {
         // Look this variable up in the function.

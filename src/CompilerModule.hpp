@@ -5,6 +5,8 @@
 #include "Lexer.hpp"
 #include "ASTheader.h"
 
+class CodeParser;
+
 class CompilerModule {
 public:
     typedef STD shared_ptr<Lexer<char_t>> pLexer;
@@ -21,10 +23,13 @@ protected:
     std::unique_ptr<llvm::LLVMContext> TheContext;
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
+    std::unique_ptr<CodeParser> codeParser;
 public:
 
     CompilerModule(pLexer lexer) : lexer(lexer) { init(); }
-
+    Metadata& getMeta() {
+        return metadata;
+    }
     void generateMetadata() {
         moveNext(); //init
         while (token.ty != Token::End) parsePrimary();
@@ -32,9 +37,7 @@ public:
 
     void codeGen();
 
-    String dump() {
-        return "ClassTree: " + metadata.classTree.toString() + "\n"; //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
-    }
+    String dump();
 
     llvm::IRBuilder<>& getBuilder() {
         return *Builder.get();
@@ -223,22 +226,22 @@ private:
                 break;
             args.push_back(parseParam());
         }
-        moveNext();
-        parseFunctionBody(mods, currentLocation + class_ty);
-        return new Function(name, class_ty, t, args);
+        if (moveNext().ty != Token::BraceOpen) logError("'{' expected!");
+        auto func = new Function(name, class_ty, t, args);
+        func->setBody(parseFunctionBody(mods, currentLocation + class_ty));
+        return func;
     }
 
     //current token ::= '{'
-    void parseFunctionBody(Mods mods, Location context) {
-        // TODO: place all tokens to the buffer and send it to metadata
-        TokenBufferStream stream;
+    TokenBufferStream& parseFunctionBody(Mods mods, Location context) {
+        TokenBufferStream* stream = new TokenBufferStream();
         int level = 0;
         while (1) {
-            stream.push(token);
+            stream->push(token);
             if (token.ty == Token::BraceOpen) level++;
             else if (token.ty == Token::BraceClose) level--;
             moveNext();
-            if(level <= 0) return;
+            if (level <= 0) return *stream;
         }
     }
 
@@ -296,8 +299,39 @@ private:
 };
 
 #include "AST.hpp"
+#include "Parser.hpp"
 
 void CompilerModule::codeGen() {
     //TODO: llvm codegeneration! OwO
+    //generating classes
+    for (auto node = metadata.classTree.root; node != nullptr; node = node->getNext()) {
+        auto type = node->data;
+        type->getLlvmType(getContext());
+        auto members = type->getMembers();
+        for (auto mem : members) {
+            switch (mem->mem_ty) {
+            case Member::Function:
+                //create function definition
+                codeParser;
+                break;
+            case Member::Field:
+            break;
+            case Member::Property:
+                //create property definition
+                break;
+            default:
+                logError("Unknown member type!");
+                break;
+            }
+        }
+    }
+}
+
+String CompilerModule::dump() {
+    STD string s;
+    llvm::raw_string_ostream stream(s);
+    TheModule->print(stream, nullptr, true, true);
+    return "dump:\n" + s + "\nClassTree: " + metadata.classTree.toString() + "\n";
+    //+ String("\n InterfaceTree: ") + metadata.InterfaceTree.ToString();
 }
 

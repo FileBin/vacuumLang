@@ -24,10 +24,10 @@ public:
     }
 
     Token moveNext() {
-        auto next = currentTok++;
-        if (next == buffer.end()) {
+        currentTok++;
+        if (currentTok == buffer.end()) {
             return Token::End;
         }
-        return *next;
+        return *currentTok;
     }
 };

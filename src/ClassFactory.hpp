@@ -57,6 +57,7 @@ llvm::Type* Objects::ClassFactory::getClassLlvmType(llvm::LLVMContext& context) 
     auto struct_ty = StructType::create(context, getLlvmName());
     llvm_type = struct_ty; //avoid the bad recursion
     STD vector<T*> fields;
+
     for (auto mem : members) {
         if (mem->mem_ty != Member::Field) continue;
         auto t = mem->getType()->getLlvmType(context);

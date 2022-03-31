@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.hpp"
 #include "ASTheader.h"
+#include "Location.hpp"
 class Type;
 class CompilerModule;
 
@@ -10,14 +11,24 @@ public:
     typedef STD out_of_range outofr;
 private:
     varMap paramMap;
-    STD vector<varMap> localVarMap = { {} };
+    STD vector<varMap> localVarMap = {};
     Type* self_context;
     llvm::Value* self;
     varMap functionMap;
     varMap staticMap;
+    Location currentLocation;
+    STD vector<Location> includes;
 public:
     void beginScope() {
         localVarMap.push_back({});
+    }
+
+    Location current() {
+        return currentLocation;
+    }
+
+    STD vector<Location> getIncludes() {
+        return includes;
     }
 
     void endScope() {

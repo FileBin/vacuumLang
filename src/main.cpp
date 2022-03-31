@@ -18,6 +18,8 @@ void programme(ConsoleApplication& app) {
 
     CompilerModule metaGen(lexer);
     metaGen.generateMetadata();
+    
+    metaGen.codeGen();
 
     app.Log(L"metadata dump:\n" + metaGen.dump() + "\n");
     Token token;
